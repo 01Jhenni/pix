@@ -1,6 +1,10 @@
 // Importar primeiro para desabilitar SSL
 import './init-ssl.js';
 
+// Carregar variáveis de ambiente
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -27,11 +31,22 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Inicializar banco de dados
-await loadDatabase();
-initDatabase();
-
-// Criar usuário padrão se não existir
-seedDefaultUser();
+try {
+  await loadDatabase();
+  initDatabase();
+  
+  // Criar usuário padrão se não existir
+  seedDefaultUser();
+} catch (error) {
+  console.error('❌ Erro crítico ao inicializar banco de dados:', error.message);
+  console.error('');
+  console.error('📝 VERIFIQUE:');
+  console.error('   1. As variáveis de ambiente SUPABASE_URL e SUPABASE_KEY estão configuradas?');
+  console.error('   2. O arquivo .env existe com as credenciais corretas?');
+  console.error('   3. As tabelas foram criadas no Supabase? (execute database/supabase-schema.sql)');
+  console.error('');
+  process.exit(1);
+}
 
 // Rotas públicas
 app.use('/api/auth', authRoutes);

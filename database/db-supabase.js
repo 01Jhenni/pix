@@ -10,8 +10,33 @@ let dbInterface;
 // Inicializar cliente Supabase
 function initSupabase() {
   if (!supabase) {
-    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log('✅ Cliente Supabase inicializado');
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      throw new Error('SUPABASE_URL e SUPABASE_KEY devem ser configurados');
+    }
+    
+    // Validar formato da URL
+    if (!SUPABASE_URL.startsWith('https://') || !SUPABASE_URL.includes('.supabase.co')) {
+      throw new Error(`URL do Supabase inválida: ${SUPABASE_URL}`);
+    }
+    
+    // Validar formato da chave
+    if (SUPABASE_KEY.length < 50) {
+      throw new Error('Chave do Supabase parece inválida (muito curta)');
+    }
+    
+    try {
+      supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+      console.log('✅ Cliente Supabase inicializado');
+      console.log(`   URL: ${SUPABASE_URL.substring(0, 40)}...`);
+      
+      // Testar conexão fazendo uma query simples
+      // (comentado para não bloquear, mas pode ser útil para debug)
+      // const test = await supabase.from('auth_users').select('count').limit(1);
+      
+    } catch (error) {
+      console.error('❌ Erro ao criar cliente Supabase:', error.message);
+      throw error;
+    }
   }
   return supabase;
 }
@@ -670,10 +695,15 @@ function createDatabaseInterface() {
 }
 
 export function initDatabase() {
-  initSupabase();
-  dbInterface = createDatabaseInterface();
-  console.log('✅ Banco de dados Supabase inicializado');
-  return dbInterface;
+  try {
+    initSupabase();
+    dbInterface = createDatabaseInterface();
+    console.log('✅ Banco de dados Supabase inicializado');
+    return dbInterface;
+  } catch (error) {
+    console.error('❌ Erro ao inicializar banco de dados Supabase:', error.message);
+    throw error;
+  }
 }
 
 export function getDatabase() {
