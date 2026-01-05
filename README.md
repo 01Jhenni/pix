@@ -25,12 +25,11 @@ npm install
 
 3. Configure o Supabase:
    - Execute o SQL em `database/supabase-schema.sql` no Supabase SQL Editor
-   - Configure as variáveis de ambiente (opcional):
-     ```env
-     SUPABASE_URL=https://seu-projeto.supabase.co
-     SUPABASE_KEY=sua-chave-publica
-     JWT_SECRET=sua-chave-secreta-jwt
+   - Copie o arquivo `.env.example` para `.env`:
+     ```bash
+     cp .env.example .env
      ```
+   - Edite o arquivo `.env` e configure suas credenciais do Supabase
 
 4. Configure os certificados SSL:
    - Coloque `cert.pem` e `key.pem` na pasta `certificates/`
