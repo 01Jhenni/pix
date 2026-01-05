@@ -24,12 +24,23 @@ npm install
 ```
 
 3. Configure o Supabase:
-   - Execute o SQL em `database/supabase-schema.sql` no Supabase SQL Editor
    - Copie o arquivo `.env.example` para `.env`:
      ```bash
      cp .env.example .env
      ```
    - Edite o arquivo `.env` e configure suas credenciais do Supabase
+   - **IMPORTANTE:** Execute o SQL em `database/supabase-schema.sql` no Supabase SQL Editor:
+     ```bash
+     # 1. Acesse https://supabase.com/dashboard
+     # 2. Selecione seu projeto
+     # 3. Vá em "SQL Editor"
+     # 4. Copie e cole o conteúdo de database/supabase-schema.sql
+     # 5. Execute o SQL
+     ```
+   - Ou execute o script de verificação:
+     ```bash
+     npm run setup:supabase
+     ```
 
 4. Configure os certificados SSL:
    - Coloque `cert.pem` e `key.pem` na pasta `certificates/`

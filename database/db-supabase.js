@@ -58,23 +58,41 @@ function syncPromise(promise) {
   
   // Polling simples (não ideal, mas funciona sem dependências nativas)
   const startTime = Date.now();
-  const timeout = 30000; // 30 segundos timeout (aumentado para operações mais lentas)
+  const timeout = 60000; // 60 segundos timeout (aumentado para conexões lentas)
   
+  // Usar uma abordagem que permite que o event loop processe
+  let iterations = 0;
   while (!done && (Date.now() - startTime) < timeout) {
-    // Usar setImmediate ou setTimeout para não bloquear completamente
-    // Mas como estamos em contexto síncrono, usar um delay menor
-    const wait = (ms) => {
-      const start = Date.now();
-      while (Date.now() - start < ms) {}
-    };
-    wait(50); // Aumentado de 10ms para 50ms para reduzir carga de CPU
+    iterations++;
+    // A cada 100 iterações, fazer um delay maior para não sobrecarregar
+    if (iterations % 100 === 0) {
+      const wait = (ms) => {
+        const start = Date.now();
+        while (Date.now() - start < ms) {}
+      };
+      wait(100);
+    } else {
+      // Delay mínimo para não bloquear completamente
+      const wait = (ms) => {
+        const start = Date.now();
+        while (Date.now() - start < ms) {}
+      };
+      wait(10);
+    }
   }
   
   if (!done) {
-    throw new Error(`Timeout ao executar operação no banco de dados (${timeout}ms)`);
+    const elapsed = Date.now() - startTime;
+    throw new Error(`Timeout ao executar operação no banco de dados (${elapsed}ms). Verifique se as tabelas foram criadas no Supabase.`);
   }
   
-  if (error) throw error;
+  if (error) {
+    // Melhorar mensagem de erro
+    if (error.message && error.message.includes('relation') || error.message.includes('does not exist')) {
+      throw new Error(`Tabela não encontrada no Supabase. Execute database/supabase-schema.sql no Supabase SQL Editor. Erro original: ${error.message}`);
+    }
+    throw error;
+  }
   return result;
 }
 
