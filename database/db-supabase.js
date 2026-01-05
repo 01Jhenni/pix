@@ -87,9 +87,12 @@ function syncPromise(promise) {
   }
   
   if (error) {
-    // Melhorar mensagem de erro
-    if (error.message && error.message.includes('relation') || error.message.includes('does not exist')) {
-      throw new Error(`Tabela não encontrada no Supabase. Execute database/supabase-schema.sql no Supabase SQL Editor. Erro original: ${error.message}`);
+    // Melhorar mensagem de erro para tabelas não encontradas
+    const errorMsg = error.message || String(error);
+    if (errorMsg.includes('relation') || errorMsg.includes('does not exist') || errorMsg.includes('not found')) {
+      const tableMatch = errorMsg.match(/relation "([^"]+)"/) || errorMsg.match(/table "([^"]+)"/);
+      const tableName = tableMatch ? tableMatch[1] : 'desconhecida';
+      throw new Error(`Tabela "${tableName}" não encontrada no Supabase. Execute database/supabase-schema.sql no Supabase SQL Editor.`);
     }
     throw error;
   }

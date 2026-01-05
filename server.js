@@ -39,20 +39,50 @@ try {
   try {
     seedDefaultUser();
   } catch (seedError) {
-    console.warn('⚠️  Aviso ao criar usuário padrão:', seedError.message);
-    console.warn('   Isso pode ser normal se as tabelas ainda não foram criadas no Supabase.');
-    console.warn('   Execute database/supabase-schema.sql no Supabase SQL Editor.');
+    const errorMsg = seedError.message || String(seedError);
+    if (errorMsg.includes('Tabela') && errorMsg.includes('não encontrada')) {
+      console.warn('');
+      console.warn('⚠️  ═══════════════════════════════════════════════════════════');
+      console.warn('   TABELAS NÃO ENCONTRADAS NO SUPABASE');
+      console.warn('   ═══════════════════════════════════════════════════════════');
+      console.warn('');
+      console.warn('📋 PARA CRIAR AS TABELAS:');
+      console.warn('');
+      console.warn('   1. Acesse: https://supabase.com/dashboard');
+      console.warn('   2. Selecione seu projeto');
+      console.warn('   3. Vá em "SQL Editor" (ícone de banco de dados no menu)');
+      console.warn('   4. Clique em "New query"');
+      console.warn('   5. Abra o arquivo: database/supabase-schema.sql');
+      console.warn('   6. Copie TODO o conteúdo do arquivo');
+      console.warn('   7. Cole no SQL Editor do Supabase');
+      console.warn('   8. Clique em "Run" ou pressione Ctrl+Enter');
+      console.warn('   9. Aguarde a confirmação de sucesso');
+      console.warn('');
+      console.warn('   OU execute: npm run check:tables');
+      console.warn('');
+      console.warn('⚠️  O servidor continuará rodando, mas algumas funcionalidades');
+      console.warn('   podem não funcionar até as tabelas serem criadas.');
+      console.warn('   ═══════════════════════════════════════════════════════════');
+      console.warn('');
+    } else {
+      console.warn('⚠️  Aviso ao criar usuário padrão:', errorMsg);
+    }
   }
 } catch (error) {
-  console.error('❌ Erro crítico ao inicializar banco de dados:', error.message);
-  console.error('');
-  console.error('📝 VERIFIQUE:');
-  console.error('   1. As variáveis de ambiente SUPABASE_URL e SUPABASE_KEY estão configuradas?');
-  console.error('   2. O arquivo .env existe com as credenciais corretas?');
-  console.error('   3. As tabelas foram criadas no Supabase? (execute database/supabase-schema.sql)');
-  console.error('   4. A conexão com o Supabase está funcionando? (verifique firewall/rede)');
-  console.error('');
-  process.exit(1);
+  const errorMsg = error.message || String(error);
+  if (errorMsg.includes('Tabela') && errorMsg.includes('não encontrada')) {
+    // Não bloquear se for apenas tabela não encontrada
+    console.warn('⚠️  Tabelas não encontradas. Veja instruções acima.');
+  } else {
+    console.error('❌ Erro crítico ao inicializar banco de dados:', errorMsg);
+    console.error('');
+    console.error('📝 VERIFIQUE:');
+    console.error('   1. As variáveis de ambiente SUPABASE_URL e SUPABASE_KEY estão configuradas?');
+    console.error('   2. O arquivo .env existe com as credenciais corretas?');
+    console.error('   3. A conexão com o Supabase está funcionando? (verifique firewall/rede)');
+    console.error('');
+    process.exit(1);
+  }
 }
 
 // Rotas públicas
