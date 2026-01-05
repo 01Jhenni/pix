@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Database files
+pix_system.db
+pix_system.db-journal
+pix_system.json
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Certificados SSL (NUNCA commitar!)
+certificates/*.pem
+certificates/*.crt
+certificates/*.key
+certificates/*.p12
+certificates/*.pfx
+certificates/passphrase.txt
+!certificates/.gitkeep
+!certificates/README.md
+!certificates/*.md
+!certificates/INSTRUCOES.txt
+
+# React/Vite (removido, mas mantendo para limpeza)
+dist/
+build/
+.vite/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+

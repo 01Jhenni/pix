@@ -1,0 +1,31 @@
+{
+  "name": "pix-jornada3-system",
+  "version": "1.0.0",
+  "description": "Sistema completo de PIX Jornada 3 com gerenciamento de múltiplos usuários",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "setup-certs": "node scripts/setup-certificates.js",
+    "extrair-certs": "node scripts/extrair-certificados-n8n.js",
+    "configurar-certs": "node scripts/tentar-todas-configuracoes.js",
+    "setup-ssl": "node scripts/configurar-certificados.js",
+    "setup-ssl-quick": "node scripts/setup-ssl-quick.js"
+  },
+  "keywords": [
+    "pix",
+    "jornada3",
+    "bb",
+    "recorrencia"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.22.1",
+    "qrcode": "^1.5.4"
+  }
+}
