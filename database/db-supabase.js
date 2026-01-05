@@ -58,19 +58,20 @@ function syncPromise(promise) {
   
   // Polling simples (não ideal, mas funciona sem dependências nativas)
   const startTime = Date.now();
-  const timeout = 10000; // 10 segundos timeout
+  const timeout = 30000; // 30 segundos timeout (aumentado para operações mais lentas)
   
   while (!done && (Date.now() - startTime) < timeout) {
-    // Pequeno delay para não bloquear completamente
+    // Usar setImmediate ou setTimeout para não bloquear completamente
+    // Mas como estamos em contexto síncrono, usar um delay menor
     const wait = (ms) => {
       const start = Date.now();
       while (Date.now() - start < ms) {}
     };
-    wait(10);
+    wait(50); // Aumentado de 10ms para 50ms para reduzir carga de CPU
   }
   
   if (!done) {
-    throw new Error('Timeout ao executar operação no banco de dados');
+    throw new Error(`Timeout ao executar operação no banco de dados (${timeout}ms)`);
   }
   
   if (error) throw error;

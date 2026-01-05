@@ -35,8 +35,14 @@ try {
   await loadDatabase();
   initDatabase();
   
-  // Criar usuário padrão se não existir
-  seedDefaultUser();
+  // Criar usuário padrão se não existir (com tratamento de erro separado)
+  try {
+    seedDefaultUser();
+  } catch (seedError) {
+    console.warn('⚠️  Aviso ao criar usuário padrão:', seedError.message);
+    console.warn('   Isso pode ser normal se as tabelas ainda não foram criadas no Supabase.');
+    console.warn('   Execute database/supabase-schema.sql no Supabase SQL Editor.');
+  }
 } catch (error) {
   console.error('❌ Erro crítico ao inicializar banco de dados:', error.message);
   console.error('');
@@ -44,6 +50,7 @@ try {
   console.error('   1. As variáveis de ambiente SUPABASE_URL e SUPABASE_KEY estão configuradas?');
   console.error('   2. O arquivo .env existe com as credenciais corretas?');
   console.error('   3. As tabelas foram criadas no Supabase? (execute database/supabase-schema.sql)');
+  console.error('   4. A conexão com o Supabase está funcionando? (verifique firewall/rede)');
   console.error('');
   process.exit(1);
 }

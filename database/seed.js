@@ -4,15 +4,24 @@ import { getDatabase } from './db-loader.js';
  * Cria usuário PIX padrão se não existir
  */
 export function seedDefaultUser() {
-  const db = getDatabase();
-  
-  // Verificar se já existe usuário com esse CNPJ
-  const existing = db.prepare('SELECT id FROM pix_users WHERE cnpj = ?').get('02429647000169');
-  
-  if (existing) {
-    console.log('✅ Usuário PIX padrão já existe');
-    return existing.id;
+  try {
+    const db = getDatabase();
+    
+    // Verificar se já existe usuário com esse CNPJ
+    const existing = db.prepare('SELECT id FROM pix_users WHERE cnpj = ?').get('02429647000169');
+    
+    if (existing) {
+      console.log('✅ Usuário PIX padrão já existe');
+      return existing.id;
+    }
+  } catch (error) {
+    // Se der erro, pode ser que a tabela não exista ainda
+    console.warn('⚠️  Não foi possível verificar usuário padrão:', error.message);
+    throw error;
   }
+  
+  try {
+    const db = getDatabase();
 
   // Dados do usuário padrão (do JSON original)
   const defaultUser = {
@@ -27,35 +36,39 @@ export function seedDefaultUser() {
     cidade_recebedor: 'BELO HORIZONTE'
   };
 
-  // Inserir usuário (garantindo que ativo = 1)
-  const result = db.prepare(`
-    INSERT INTO pix_users (
-      cnpj, nome, gw_app_key, basic_auth_base64, base_url, oauth_url,
-      chave_pix_recebedor, nome_recebedor, cidade_recebedor, ativo
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-  `).run(
-    defaultUser.cnpj,
-    defaultUser.nome,
-    defaultUser.gw_app_key,
-    defaultUser.basic_auth_base64,
-    defaultUser.base_url,
-    defaultUser.oauth_url,
-    defaultUser.chave_pix_recebedor,
-    defaultUser.nome_recebedor,
-    defaultUser.cidade_recebedor
-  );
+    // Inserir usuário (garantindo que ativo = 1)
+    const result = db.prepare(`
+      INSERT INTO pix_users (
+        cnpj, nome, gw_app_key, basic_auth_base64, base_url, oauth_url,
+        chave_pix_recebedor, nome_recebedor, cidade_recebedor, ativo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    `).run(
+      defaultUser.cnpj,
+      defaultUser.nome,
+      defaultUser.gw_app_key,
+      defaultUser.basic_auth_base64,
+      defaultUser.base_url,
+      defaultUser.oauth_url,
+      defaultUser.chave_pix_recebedor,
+      defaultUser.nome_recebedor,
+      defaultUser.cidade_recebedor
+    );
 
-  console.log('✅ Usuário PIX padrão criado com sucesso!');
-  console.log(`   CNPJ: ${defaultUser.cnpj}`);
-  console.log(`   Nome: ${defaultUser.nome}`);
-  console.log(`   ID: ${result.lastInsertRowid}`);
-  console.log('');
-  console.log('📝 PRÓXIMOS PASSOS:');
-  console.log('   1. Extraia os certificados SSL do n8n (veja CERTIFICADOS_SSL.md)');
-  console.log('   2. Coloque os arquivos cert.pem e key.pem na pasta certificates/');
-  console.log('   3. Reinicie o servidor');
-  console.log('');
-  
-  return result.lastInsertRowid;
+    console.log('✅ Usuário PIX padrão criado com sucesso!');
+    console.log(`   CNPJ: ${defaultUser.cnpj}`);
+    console.log(`   Nome: ${defaultUser.nome}`);
+    console.log(`   ID: ${result.lastInsertRowid}`);
+    console.log('');
+    console.log('📝 PRÓXIMOS PASSOS:');
+    console.log('   1. Extraia os certificados SSL do n8n (veja CERTIFICADOS_SSL.md)');
+    console.log('   2. Coloque os arquivos cert.pem e key.pem na pasta certificates/');
+    console.log('   3. Reinicie o servidor');
+    console.log('');
+    
+    return result.lastInsertRowid;
+  } catch (error) {
+    console.error('❌ Erro ao criar usuário padrão:', error.message);
+    throw error;
+  }
 }
 
