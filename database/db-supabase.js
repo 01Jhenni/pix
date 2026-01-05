@@ -19,19 +19,17 @@ function initSupabase() {
       throw new Error(`URL do Supabase inválida: ${SUPABASE_URL}`);
     }
     
-    // Validar formato da chave
-    if (SUPABASE_KEY.length < 50) {
-      throw new Error('Chave do Supabase parece inválida (muito curta)');
+    // Validar formato da chave - apenas verificar se não está vazia
+    // Chaves do Supabase podem ter tamanhos variados
+    if (!SUPABASE_KEY || SUPABASE_KEY.trim().length === 0) {
+      throw new Error('Chave do Supabase não pode estar vazia');
     }
     
     try {
       supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
       console.log('✅ Cliente Supabase inicializado');
       console.log(`   URL: ${SUPABASE_URL.substring(0, 40)}...`);
-      
-      // Testar conexão fazendo uma query simples
-      // (comentado para não bloquear, mas pode ser útil para debug)
-      // const test = await supabase.from('auth_users').select('count').limit(1);
+      console.log(`   Key: ${SUPABASE_KEY.substring(0, 20)}...`);
       
     } catch (error) {
       console.error('❌ Erro ao criar cliente Supabase:', error.message);
