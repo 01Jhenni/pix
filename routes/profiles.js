@@ -1,13 +1,5 @@
 import express from 'express';
 import { getDatabase } from '../database/db-loader.js';
-import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const router = express.Router();
 
@@ -111,15 +103,20 @@ router.put('/:userId', (req, res) => {
         updated_at: new Date().toISOString()
       };
       
-      const profiles = db.prepare(`SELECT * FROM user_profiles`).all();
-      const index = profiles.findIndex(p => p.id === existing.id);
-      if (index >= 0) {
-        profiles[index] = profile;
-        // Salvar no banco JSON
-        const dbData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'pix_system.json'), 'utf8'));
-        dbData.user_profiles = profiles;
-        fs.writeFileSync(path.join(__dirname, '..', 'pix_system.json'), JSON.stringify(dbData, null, 2));
-      }
+      // Atualizar usando Supabase
+      db.prepare(`
+        UPDATE user_profiles SET
+          brand_name = ?, brand_logo = ?, primary_color = ?, secondary_color = ?,
+          success_color = ?, danger_color = ?, warning_color = ?, info_color = ?,
+          custom_css = ?, custom_js = ?, footer_text = ?, header_text = ?,
+          favicon = ?, metadata = ?, updated_at = ?
+        WHERE id = ?
+      `).run(
+        profile.brand_name, profile.brand_logo, profile.primary_color, profile.secondary_color,
+        profile.success_color, profile.danger_color, profile.warning_color, profile.info_color,
+        profile.custom_css, profile.custom_js, profile.footer_text, profile.header_text,
+        profile.favicon, profile.metadata, profile.updated_at, existing.id
+      );
       
       res.json({
         success: true,
@@ -127,10 +124,25 @@ router.put('/:userId', (req, res) => {
         data: profile
       });
     } else {
-      // Criar novo
-      const newId = db.prepare(`SELECT MAX(id) as max FROM user_profiles`).get()?.max || 0;
+      // Criar novo usando Supabase
+      const result = db.prepare(`
+        INSERT INTO user_profiles (
+          pix_user_id, brand_name, brand_logo, primary_color, secondary_color,
+          success_color, danger_color, warning_color, info_color,
+          custom_css, custom_js, footer_text, header_text, favicon, metadata
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        parseInt(userId), brand_name || null, brand_logo || null,
+        primary_color || '#667eea', secondary_color || '#764ba2',
+        success_color || '#10b981', danger_color || '#ef4444',
+        warning_color || '#f59e0b', info_color || '#3b82f6',
+        custom_css || null, custom_js || null, footer_text || null,
+        header_text || null, favicon || null,
+        metadata ? JSON.stringify(metadata) : null
+      );
+      
       const profile = {
-        id: newId + 1,
+        id: result.lastInsertRowid,
         pix_user_id: parseInt(userId),
         brand_name: brand_name || null,
         brand_logo: brand_logo || null,
@@ -149,11 +161,6 @@ router.put('/:userId', (req, res) => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      
-      const dbData = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'pix_system.json'), 'utf8'));
-      if (!dbData.user_profiles) dbData.user_profiles = [];
-      dbData.user_profiles.push(profile);
-      fs.writeFileSync(path.join(__dirname, '..', 'pix_system.json'), JSON.stringify(dbData, null, 2));
       
       res.json({
         success: true,

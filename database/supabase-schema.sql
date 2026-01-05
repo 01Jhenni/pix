@@ -1,6 +1,29 @@
 -- Schema do banco de dados para Supabase
 -- Execute este SQL no Supabase SQL Editor
 
+-- Tabela de autenticação (usuários do sistema)
+CREATE TABLE IF NOT EXISTS auth_users (
+  id BIGSERIAL PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  name TEXT,
+  role TEXT DEFAULT 'admin',
+  active INTEGER DEFAULT 1,
+  last_login TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Tabela de sessões
+CREATE TABLE IF NOT EXISTS sessions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
+  token TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Tabela de usuários PIX
 CREATE TABLE IF NOT EXISTS pix_users (
   id BIGSERIAL PRIMARY KEY,
@@ -76,6 +99,10 @@ CREATE TABLE IF NOT EXISTS api_keys (
 );
 
 -- Índices
+CREATE INDEX IF NOT EXISTS idx_auth_users_username ON auth_users(username);
+CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users(email);
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_pix_user ON transactions(pix_user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_txid ON transactions(txid);
 CREATE INDEX IF NOT EXISTS idx_transactions_id_rec ON transactions(id_rec);
@@ -105,15 +132,29 @@ CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles
 CREATE TRIGGER update_api_keys_updated_at BEFORE UPDATE ON api_keys
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_auth_users_updated_at BEFORE UPDATE ON auth_users
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- Habilitar Row Level Security (RLS) - opcional, ajuste conforme necessário
+ALTER TABLE auth_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pix_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS básicas (permitir tudo - ajuste conforme sua necessidade de segurança)
+CREATE POLICY "Allow all operations on auth_users" ON auth_users FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all operations on sessions" ON sessions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations on pix_users" ON pix_users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations on transactions" ON transactions FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations on user_profiles" ON user_profiles FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all operations on api_keys" ON api_keys FOR ALL USING (true) WITH CHECK (true);
+
+-- Inserir usuário admin padrão (senha: admin123)
+-- IMPORTANTE: Altere a senha após o primeiro login!
+-- Para gerar um novo hash, execute: node scripts/generate-password-hash.js admin123
+-- Hash para 'admin123' (gerado com bcrypt, rounds=10):
+-- NOTA: Execute o script generate-password-hash.js para gerar o hash correto
+-- e insira manualmente no Supabase ou use a rota /api/auth/register após criar o primeiro admin manualmente.
 

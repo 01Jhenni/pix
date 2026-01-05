@@ -24,10 +24,6 @@ export function ApiKeys({ showToast }) {
     }
   }, [selectedUserId]);
 
-  // Debug: log quando selectedKeyForDocs muda
-  useEffect(() => {
-    console.log('selectedKeyForDocs mudou:', selectedKeyForDocs);
-  }, [selectedKeyForDocs]);
 
   const loadUsers = async () => {
     try {
@@ -222,12 +218,10 @@ export function ApiKeys({ showToast }) {
                         }
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('✅ Clicou na API Key:', key);
                         const keyData = {
                           ...key,
                           key: key.key || key.api_key
                         };
-                        console.log('✅ Definindo selectedKeyForDocs:', keyData);
                         setSelectedKeyForDocs(keyData);
                         // Scroll para a documentação após um pequeno delay
                         setTimeout(() => {
@@ -274,7 +268,6 @@ export function ApiKeys({ showToast }) {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log('✅ Botão Code clicado para:', key);
                               const keyData = {
                                 ...key,
                                 key: key.key || key.api_key
@@ -321,10 +314,6 @@ export function ApiKeys({ showToast }) {
       {/* Seção de Documentação da API - Mostrar quando uma key específica for selecionada */}
       {selectedKeyForDocs ? (
         <Card id="api-documentation" className="border-2 border-blue-500/30 mt-6 animate-fadeIn" style={{ display: 'block', opacity: 1 }}>
-          {(() => {
-            console.log('✅ RENDERIZANDO DOCUMENTAÇÃO PARA:', selectedKeyForDocs);
-            return null;
-          })()}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Code className="h-6 w-6 text-blue-400" />

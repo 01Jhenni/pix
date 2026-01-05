@@ -1,5 +1,4 @@
 # Esta pasta contém certificados SSL do Banco do Brasil
-# Adicione aqui:
 # - cert.pem (certificado público)
 # - key.pem (chave privada)
 # - ca.pem (certificado CA, se disponível)

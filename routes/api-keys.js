@@ -1,14 +1,6 @@
 import express from 'express';
 import { getDatabase } from '../database/db-loader.js';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const DB_PATH = path.join(__dirname, '..', 'pix_system.json');
 
 const router = express.Router();
 
@@ -39,12 +31,9 @@ export function authenticateApiKey(req, res, next) {
     }
 
     // Atualizar último uso
-    const dbData = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    const keyIndex = dbData.api_keys.findIndex(k => k.id === keyData.id);
-    if (keyIndex >= 0) {
-      dbData.api_keys[keyIndex].last_used = new Date().toISOString();
-      fs.writeFileSync(DB_PATH, JSON.stringify(dbData, null, 2));
-    }
+    db.prepare(`
+      UPDATE api_keys SET last_used = ? WHERE id = ?
+    `).run(new Date().toISOString(), keyData.id);
 
     // Adicionar informações do usuário à requisição
     req.pixUserId = keyData.pix_user_id;
@@ -111,17 +100,11 @@ router.post('/', (req, res) => {
     const db = getDatabase();
     const userId = parseInt(pixUserId);
     
-    // Acessar o banco diretamente através do objeto db interno
-    // O getDatabase() retorna um objeto com métodos prepare(), mas também precisamos acessar os dados
-    const dbData = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-    const user = dbData.pix_users.find(u => u.id === userId && (u.ativo === 1 || u.ativo === true));
+    const user = db.prepare(`
+      SELECT id FROM pix_users WHERE id = ? AND ativo = 1
+    `).get(userId);
     
     if (!user) {
-      console.error('Usuário não encontrado ou inativo:', {
-        pixUserId,
-        userId,
-        usuarios: dbData.pix_users.map(u => ({ id: u.id, nome: u.nome, ativo: u.ativo }))
-      });
       return res.status(404).json({
         success: false,
         error: 'Usuário PIX não encontrado ou inativo'

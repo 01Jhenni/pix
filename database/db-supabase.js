@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import deasync from 'deasync';
 
 // Configuração do Supabase
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://joksegwuxhqgoigvhebb.supabase.co';
@@ -17,7 +16,8 @@ function initSupabase() {
   return supabase;
 }
 
-// Helper para executar Promises de forma síncrona
+// Helper para executar Promises de forma síncrona (sem deasync)
+// Usa uma abordagem de polling simples
 function syncPromise(promise) {
   let result;
   let error;
@@ -33,7 +33,22 @@ function syncPromise(promise) {
       done = true;
     });
   
-  deasync.loopWhile(() => !done);
+  // Polling simples (não ideal, mas funciona sem dependências nativas)
+  const startTime = Date.now();
+  const timeout = 10000; // 10 segundos timeout
+  
+  while (!done && (Date.now() - startTime) < timeout) {
+    // Pequeno delay para não bloquear completamente
+    const wait = (ms) => {
+      const start = Date.now();
+      while (Date.now() - start < ms) {}
+    };
+    wait(10);
+  }
+  
+  if (!done) {
+    throw new Error('Timeout ao executar operação no banco de dados');
+  }
   
   if (error) throw error;
   return result;
@@ -305,6 +320,17 @@ function createDatabaseInterface() {
             return syncPromise(queryBuilder) || [];
           }
           
+          // SELECT * FROM auth_users
+          if (query.includes('FROM auth_users')) {
+            let queryBuilder = client.from('auth_users').select('*');
+            
+            if (query.includes('WHERE active = 1')) {
+              queryBuilder = queryBuilder.eq('active', 1);
+            }
+            
+            return syncPromise(queryBuilder) || [];
+          }
+          
           return [];
         },
         
@@ -540,6 +566,90 @@ function createDatabaseInterface() {
               .from('api_keys')
               .update(updates)
               .eq('id', id)
+              .select();
+            
+            const data = syncPromise(promise);
+            return { changes: data?.length || 0 };
+          }
+          
+          // INSERT INTO auth_users
+          if (query.includes('INSERT INTO auth_users')) {
+            const userData = {
+              username: params[0],
+              email: params[1],
+              password_hash: params[2],
+              name: params[3] || params[0],
+              role: params[4] || 'admin',
+              active: 1
+            };
+            
+            const promise = client
+              .from('auth_users')
+              .insert(userData)
+              .select()
+              .single();
+            
+            const data = syncPromise(promise);
+            return { lastInsertRowid: data.id, changes: 1 };
+          }
+          
+          // INSERT INTO sessions
+          if (query.includes('INSERT INTO sessions')) {
+            const sessionData = {
+              user_id: params[0],
+              token: params[1],
+              expires_at: params[2]
+            };
+            
+            const promise = client
+              .from('sessions')
+              .insert(sessionData)
+              .select()
+              .single();
+            
+            const data = syncPromise(promise);
+            return { lastInsertRowid: data.id, changes: 1 };
+          }
+          
+          // UPDATE auth_users
+          if (query.includes('UPDATE auth_users')) {
+            const id = params[params.length - 1];
+            const updates = {};
+            
+            const setMatch = query.match(/SET (.+?) WHERE/);
+            if (setMatch) {
+              const fields = setMatch[1].split(',').map(f => f.trim());
+              let paramIndex = 0;
+              fields.forEach(field => {
+                if (field.includes('=') && field.includes('?')) {
+                  const fieldName = field.split('=')[0].trim();
+                  if (fieldName !== 'updated_at') {
+                    updates[fieldName] = params[paramIndex];
+                    paramIndex++;
+                  }
+                }
+              });
+            }
+            
+            updates.updated_at = new Date().toISOString();
+            
+            const promise = client
+              .from('auth_users')
+              .update(updates)
+              .eq('id', id)
+              .select();
+            
+            const data = syncPromise(promise);
+            return { changes: data?.length || 0 };
+          }
+          
+          // DELETE FROM sessions
+          if (query.includes('DELETE FROM sessions')) {
+            const token = params[0];
+            const promise = client
+              .from('sessions')
+              .delete()
+              .eq('token', token)
               .select();
             
             const data = syncPromise(promise);

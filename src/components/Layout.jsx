@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -7,13 +8,21 @@ import {
   Palette, 
   Key,
   Menu,
-  X
+  X,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
 import { api } from '../services/api';
+import { AuthContext } from '../contexts/AuthContext';
 
-export function Layout({ children, activeTab, setActiveTab }) {
+export function Layout({ children }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab = location.pathname.split('/')[1] || 'dashboard';
+  const { user, logout } = useContext(AuthContext);
   const [stats, setStats] = useState({ users: 0, transactions: 0, active: 0 });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -37,12 +46,12 @@ export function Layout({ children, activeTab, setActiveTab }) {
   };
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'create', label: 'Criar Recorrência', icon: PlusCircle },
-    { id: 'users', label: 'Usuários PIX', icon: Users },
-    { id: 'transactions', label: 'Transações', icon: List },
-    { id: 'whitelabel', label: 'White Label', icon: Palette },
-    { id: 'apikeys', label: 'API Keys', icon: Key },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { id: 'create', label: 'Criar Recorrência', icon: PlusCircle, path: '/create' },
+    { id: 'users', label: 'Usuários PIX', icon: Users, path: '/users' },
+    { id: 'transactions', label: 'Transações', icon: List, path: '/transactions' },
+    { id: 'whitelabel', label: 'White Label', icon: Palette, path: '/whitelabel' },
+    { id: 'apikeys', label: 'API Keys', icon: Key, path: '/apikeys' },
   ];
 
   return (
@@ -77,6 +86,44 @@ export function Layout({ children, activeTab, setActiveTab }) {
               </div>
             </div>
 
+            {/* User Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-700 rounded-full flex items-center justify-center">
+                  <UserIcon className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-white text-sm hidden md:block">{user?.name || user?.username}</span>
+              </button>
+
+              {userMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setUserMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-xl border border-slate-700 z-50">
+                    <div className="p-3 border-b border-slate-700">
+                      <p className="text-white text-sm font-medium">{user?.name || user?.username}</p>
+                      <p className="text-slate-400 text-xs">{user?.email}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setUserMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-red-400 hover:bg-slate-700 transition-colors text-sm"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sair
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -106,7 +153,7 @@ export function Layout({ children, activeTab, setActiveTab }) {
                 <button
                   key={tab.id}
                   onClick={() => {
-                    setActiveTab(tab.id);
+                    navigate(tab.path);
                     setMobileMenuOpen(false);
                   }}
                   className={`

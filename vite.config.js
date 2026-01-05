@@ -10,8 +10,8 @@ export default defineConfig({
   plugins: [react()],
   root: 'src',
   build: {
-    outDir: '../public',
-    emptyOutDir: false,
+    outDir: '../dist',
+    emptyOutDir: true,
   },
   server: {
     port: 5173,

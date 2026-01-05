@@ -56,7 +56,7 @@ export function CreateRecurrence({ showToast }) {
         // Gerar QR Code se não vier na resposta
         if (res.data.data.pixCopiaECola && !res.data.data.qrCodeImage) {
           try {
-            const qrCodeImage = await QRCodeLib.toDataURL(res.data.data.pixCopiaECola, {
+            const qrCodeImage = await QRCode.toDataURL(res.data.data.pixCopiaECola, {
               width: 300,
               margin: 2,
             });
