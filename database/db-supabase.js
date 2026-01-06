@@ -283,10 +283,21 @@ function createDatabaseInterface() {
           if (query.includes('SELECT') && query.includes('FROM auth_users') && query.includes('WHERE username = ?') && query.includes('OR email = ?')) {
             const username = params[0];
             const email = params[1];
-            const promise = client
+            // Tentar buscar por username primeiro
+            let promise = client
               .from('auth_users')
               .select('id')
-              .or(`username.eq.${username},email.eq.${email}`)
+              .eq('username', username)
+              .maybeSingle();
+            
+            let result = syncPromise(promise);
+            if (result) return result;
+            
+            // Se não encontrou, buscar por email
+            promise = client
+              .from('auth_users')
+              .select('id')
+              .eq('email', email)
               .maybeSingle();
             
             return syncPromise(promise);
