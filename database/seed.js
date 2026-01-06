@@ -3,7 +3,7 @@ import { getDatabase } from './db-loader.js';
 /**
  * Cria usuário PIX padrão se não existir
  */
-export function seedDefaultUser() {
+export async function seedDefaultUser() {
   try {
     const db = getDatabase();
     

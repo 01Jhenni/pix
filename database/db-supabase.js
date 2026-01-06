@@ -40,7 +40,7 @@ function initSupabase() {
 }
 
 // Helper para executar Promises de forma síncrona (sem deasync)
-// Usa uma abordagem de polling simples
+// Usa uma abordagem melhorada que permite que o event loop processe
 function syncPromise(promise) {
   let result;
   let error;
@@ -56,34 +56,22 @@ function syncPromise(promise) {
       done = true;
     });
   
-  // Polling simples (não ideal, mas funciona sem dependências nativas)
   const startTime = Date.now();
-  const timeout = 60000; // 60 segundos timeout (aumentado para conexões lentas)
+  const timeout = 30000; // 30 segundos timeout
   
-  // Usar uma abordagem que permite que o event loop processe
-  let iterations = 0;
+  // Polling com delays pequenos para não bloquear completamente o event loop
   while (!done && (Date.now() - startTime) < timeout) {
-    iterations++;
-    // A cada 100 iterações, fazer um delay maior para não sobrecarregar
-    if (iterations % 100 === 0) {
-      const wait = (ms) => {
-        const start = Date.now();
-        while (Date.now() - start < ms) {}
-      };
-      wait(100);
-    } else {
-      // Delay mínimo para não bloquear completamente
-      const wait = (ms) => {
-        const start = Date.now();
-        while (Date.now() - start < ms) {}
-      };
-      wait(10);
-    }
+    // Usar um delay mínimo para permitir que outras operações sejam processadas
+    const wait = (ms) => {
+      const start = Date.now();
+      while (Date.now() - start < ms && !done) {}
+    };
+    wait(1); // Delay de 1ms
   }
   
   if (!done) {
     const elapsed = Date.now() - startTime;
-    throw new Error(`Timeout ao executar operação no banco de dados (${elapsed}ms). Verifique se as tabelas foram criadas no Supabase.`);
+    throw new Error(`Timeout ao executar operação no banco de dados (${elapsed}ms). Verifique se as tabelas foram criadas no Supabase e se a conexão está funcionando.`);
   }
   
   if (error) {
@@ -96,6 +84,7 @@ function syncPromise(promise) {
     }
     throw error;
   }
+  
   return result;
 }
 
@@ -246,6 +235,77 @@ function createDatabaseInterface() {
               .maybeSingle();
             
             return syncPromise(promise);
+          }
+          
+          // SELECT ... FROM auth_users WHERE id = ?
+          if (query.includes('SELECT') && query.includes('FROM auth_users') && query.includes('WHERE id = ?')) {
+            const id = params[0];
+            const promise = client
+              .from('auth_users')
+              .select('*')
+              .eq('id', id)
+              .maybeSingle();
+            
+            return syncPromise(promise);
+          }
+          
+          // SELECT ... FROM auth_users WHERE username = ? AND active = 1
+          if (query.includes('SELECT') && query.includes('FROM auth_users') && query.includes('WHERE username = ?')) {
+            const username = params[0];
+            let queryBuilder = client
+              .from('auth_users')
+              .select('*')
+              .eq('username', username);
+            
+            if (query.includes('AND active = 1')) {
+              queryBuilder = queryBuilder.eq('active', 1);
+            }
+            
+            return syncPromise(queryBuilder.maybeSingle());
+          }
+          
+          // SELECT ... FROM auth_users WHERE email = ? AND active = 1
+          if (query.includes('SELECT') && query.includes('FROM auth_users') && query.includes('WHERE email = ?')) {
+            const email = params[0];
+            let queryBuilder = client
+              .from('auth_users')
+              .select('*')
+              .eq('email', email);
+            
+            if (query.includes('AND active = 1')) {
+              queryBuilder = queryBuilder.eq('active', 1);
+            }
+            
+            return syncPromise(queryBuilder.maybeSingle());
+          }
+          
+          // SELECT id FROM auth_users WHERE username = ? OR email = ?
+          if (query.includes('SELECT') && query.includes('FROM auth_users') && query.includes('WHERE username = ?') && query.includes('OR email = ?')) {
+            const username = params[0];
+            const email = params[1];
+            const promise = client
+              .from('auth_users')
+              .select('id')
+              .or(`username.eq.${username},email.eq.${email}`)
+              .maybeSingle();
+            
+            return syncPromise(promise);
+          }
+          
+          // SELECT ... FROM sessions WHERE token = ? AND expires_at > ?
+          if (query.includes('SELECT') && query.includes('FROM sessions') && query.includes('WHERE token = ?')) {
+            const token = params[0];
+            let queryBuilder = client
+              .from('sessions')
+              .select('*')
+              .eq('token', token);
+            
+            if (query.includes('AND expires_at > ?')) {
+              const expiresAt = params[1];
+              queryBuilder = queryBuilder.gt('expires_at', expiresAt);
+            }
+            
+            return syncPromise(queryBuilder.maybeSingle());
           }
           
           // COUNT(*)

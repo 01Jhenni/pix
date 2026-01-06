@@ -37,7 +37,7 @@ try {
   
   // Criar usuário padrão se não existir (com tratamento de erro separado)
   try {
-    seedDefaultUser();
+    await seedDefaultUser();
   } catch (seedError) {
     const errorMsg = seedError.message || String(seedError);
     if (errorMsg.includes('Tabela') && errorMsg.includes('não encontrada')) {
