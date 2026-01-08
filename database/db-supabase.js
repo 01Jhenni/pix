@@ -191,7 +191,7 @@ function createDatabaseInterface() {
               .eq('id', id)
               .maybeSingle();
             
-            const data = syncPromise(promise);
+            const data = syncPromise(promise, true); // allowNull para SELECT
             if (!data) return null;
             
             return {
@@ -214,7 +214,7 @@ function createDatabaseInterface() {
               .eq('txid', txid)
               .maybeSingle();
             
-            const data = syncPromise(promise);
+            const data = syncPromise(promise, true); // allowNull para SELECT
             if (!data) return null;
             
             return {
@@ -379,7 +379,8 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.eq('status', params[statusIndex]);
             }
             
-            const { count } = syncPromise(queryBuilder);
+            const response = syncPromise(queryBuilder, true); // allowNull para COUNT
+            const count = response?.count || response || 0;
             return { total: count || 0 };
           }
           
@@ -392,7 +393,7 @@ function createDatabaseInterface() {
               .limit(1)
               .maybeSingle();
             
-            const data = syncPromise(promise);
+            const data = syncPromise(promise, true); // allowNull para SELECT
             return { max: data?.id || 0 };
           }
           
@@ -656,8 +657,10 @@ function createDatabaseInterface() {
               .eq('id', id)
               .select();
             
-            const data = syncPromise(promise);
-            return { changes: data?.length || 0 };
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o array
+            const data = response?.data || response;
+            return { changes: Array.isArray(data) ? data.length : (data ? 1 : 0) };
           }
           
           // UPDATE transactions
@@ -688,8 +691,10 @@ function createDatabaseInterface() {
               .eq('id', id)
               .select();
             
-            const data = syncPromise(promise);
-            return { changes: data?.length || 0 };
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o array
+            const data = response?.data || response;
+            return { changes: Array.isArray(data) ? data.length : (data ? 1 : 0) };
           }
           
           // UPDATE user_profiles
@@ -720,8 +725,10 @@ function createDatabaseInterface() {
               .eq('id', id)
               .select();
             
-            const data = syncPromise(promise);
-            return { changes: data?.length || 0 };
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o array
+            const data = response?.data || response;
+            return { changes: Array.isArray(data) ? data.length : (data ? 1 : 0) };
           }
           
           // UPDATE api_keys
@@ -752,8 +759,10 @@ function createDatabaseInterface() {
               .eq('id', id)
               .select();
             
-            const data = syncPromise(promise);
-            return { changes: data?.length || 0 };
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o array
+            const data = response?.data || response;
+            return { changes: Array.isArray(data) ? data.length : (data ? 1 : 0) };
           }
           
           // INSERT INTO auth_users
@@ -833,8 +842,10 @@ function createDatabaseInterface() {
               .eq('id', id)
               .select();
             
-            const data = syncPromise(promise);
-            return { changes: data?.length || 0 };
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o array
+            const data = response?.data || response;
+            return { changes: Array.isArray(data) ? data.length : (data ? 1 : 0) };
           }
           
           // DELETE FROM sessions
@@ -846,8 +857,10 @@ function createDatabaseInterface() {
               .eq('token', token)
               .select();
             
-            const data = syncPromise(promise);
-            return { changes: data?.length || 0 };
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o array
+            const data = response?.data || response;
+            return { changes: Array.isArray(data) ? data.length : (data ? 1 : 0) };
           }
           
           return { changes: 0 };
