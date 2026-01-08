@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "setup:supabase": "node scripts/setup-supabase.js",
-    "check:tables": "node scripts/create-tables-supabase.js"
+    "check:tables": "node scripts/create-tables-supabase.js",
+    "create:admin": "node scripts/create-admin-auth-user.js"
   },
   "keywords": [
     "pix",

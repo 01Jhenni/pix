@@ -17,6 +17,7 @@ import transactionRoutes from './routes/transactions.js';
 import authRoutes from './routes/auth.js';
 import { loadDatabase, initDatabase } from './database/db-loader.js';
 import { seedDefaultUser } from './database/seed.js';
+import { seedAuthUser } from './database/seed-auth.js';
 import { authenticate } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,7 +36,15 @@ try {
   await loadDatabase();
   initDatabase();
   
-  // Criar usuário padrão se não existir (com tratamento de erro separado)
+  // Criar usuário admin de autenticação se não existir
+  try {
+    await seedAuthUser();
+  } catch (authError) {
+    // Não bloquear se der erro, apenas avisar
+    console.warn('⚠️  Aviso ao criar usuário admin de autenticação:', authError.message);
+  }
+  
+  // Criar usuário PIX padrão se não existir (com tratamento de erro separado)
   try {
     await seedDefaultUser();
   } catch (seedError) {
