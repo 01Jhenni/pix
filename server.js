@@ -157,37 +157,41 @@ if (distExists) {
   console.log('⚠️  Frontend não encontrado, usando página de fallback');
 }
 
-// Rota para o frontend
+// Rota para o frontend - DEVE SER A ÚLTIMA ROTA
 app.get('*', (req, res) => {
-  // Se não for uma rota de API, servir o index.html
-  if (!req.path.startsWith('/api')) {
-    // Prioridade 1: dist/index.html (frontend construído)
-    if (fs.existsSync(distIndexPath)) {
-      // Headers para evitar cache
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      res.sendFile(distIndexPath);
-      return;
-    }
-    
-    // Prioridade 2: public/index.html (página de fallback)
-    if (fs.existsSync(publicIndexPath)) {
-      res.sendFile(publicIndexPath);
-      return;
-    }
-    
-    // Fallback final: JSON
-    res.json({
-      message: 'API PIX Jornada 3',
-      version: '1.0.0',
-      docs: '/api',
-      frontend: 'Frontend React disponível após build',
-      instructions: 'Execute: npm run build && npm start'
-    });
-  } else {
+  // Se for uma rota de API, retornar 404
+  if (req.path.startsWith('/api')) {
     res.status(404).json({ error: 'API endpoint not found' });
+    return;
   }
+  
+  // Verificar dinamicamente se dist existe (pode ter sido criado após o servidor iniciar)
+  const distExistsNow = fs.existsSync(distIndexPath);
+  
+  // Prioridade 1: dist/index.html (frontend construído)
+  if (distExistsNow) {
+    // Headers para evitar cache
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(distIndexPath, { root: __dirname });
+    return;
+  }
+  
+  // Prioridade 2: public/index.html (página de fallback)
+  if (fs.existsSync(publicIndexPath)) {
+    res.sendFile(publicIndexPath, { root: __dirname });
+    return;
+  }
+  
+  // Fallback final: JSON
+  res.json({
+    message: 'API PIX Jornada 3',
+    version: '1.0.0',
+    docs: '/api',
+    frontend: 'Frontend React disponível após build',
+    instructions: 'Execute: npm run build && npm start'
+  });
 });
 
 // Verificar se o frontend foi construído (verificação dinâmica)

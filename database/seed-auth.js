@@ -49,7 +49,15 @@ export async function seedAuthUser() {
     }
     
     // Verificar se result existe e tem lastInsertRowid
-    if (!result || !result.lastInsertRowid) {
+    if (!result) {
+      console.warn('⚠️  Não foi possível obter resultado da inserção. Verifique a conexão com Supabase.');
+      return null;
+    }
+    
+    // Verificar se tem lastInsertRowid ou se precisa buscar o ID de outra forma
+    const userId = result.lastInsertRowid || (result.id ? result.id : null);
+    
+    if (!userId) {
       console.warn('⚠️  Não foi possível obter ID do usuário criado. Verifique a conexão com Supabase.');
       return null;
     }
@@ -57,9 +65,9 @@ export async function seedAuthUser() {
     console.log('✅ Usuário admin de autenticação criado com sucesso!');
     console.log(`   Email: admin@admin.com`);
     console.log(`   Senha: 123456`);
-    console.log(`   ID: ${result.lastInsertRowid}`);
+    console.log(`   ID: ${userId}`);
     
-    return result.lastInsertRowid;
+    return userId;
   } catch (error) {
     const errorMsg = error.message || String(error);
     if (errorMsg.includes('Tabela') && errorMsg.includes('não encontrada')) {

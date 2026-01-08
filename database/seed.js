@@ -80,7 +80,15 @@ export async function seedDefaultUser() {
     }
 
     // Verificar se result existe e tem lastInsertRowid
-    if (!result || !result.lastInsertRowid) {
+    if (!result) {
+      console.warn('⚠️  Não foi possível obter resultado da inserção. Verifique a conexão com Supabase.');
+      return null;
+    }
+    
+    // Verificar se tem lastInsertRowid ou se precisa buscar o ID de outra forma
+    const userId = result.lastInsertRowid || (result.id ? result.id : null);
+    
+    if (!userId) {
       console.warn('⚠️  Não foi possível obter ID do usuário criado. Verifique a conexão com Supabase.');
       return null;
     }
@@ -88,7 +96,7 @@ export async function seedDefaultUser() {
     console.log('✅ Usuário PIX padrão criado com sucesso!');
     console.log(`   CNPJ: ${defaultUser.cnpj}`);
     console.log(`   Nome: ${defaultUser.nome}`);
-    console.log(`   ID: ${result.lastInsertRowid}`);
+    console.log(`   ID: ${userId}`);
     console.log('');
     console.log('📝 PRÓXIMOS PASSOS:');
     console.log('   1. Extraia os certificados SSL do n8n (veja CERTIFICADOS_SSL.md)');
@@ -96,7 +104,7 @@ export async function seedDefaultUser() {
     console.log('   3. Reinicie o servidor');
     console.log('');
     
-    return result.lastInsertRowid;
+    return userId;
   } catch (error) {
     const errorMsg = error.message || String(error);
     if (errorMsg.includes('Timeout')) {

@@ -522,7 +522,9 @@ function createDatabaseInterface() {
               .select()
               .single();
             
-            const data = syncPromise(promise);
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o objeto
+            const data = response?.data || response;
             if (!data || !data.id) {
               throw new Error('Falha ao inserir registro: não foi possível obter o ID');
             }
@@ -556,7 +558,9 @@ function createDatabaseInterface() {
               .select()
               .single();
             
-            const data = syncPromise(promise);
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o objeto
+            const data = response?.data || response;
             if (!data || !data.id) {
               throw new Error('Falha ao inserir registro: não foi possível obter o ID');
             }
@@ -589,7 +593,9 @@ function createDatabaseInterface() {
               .select()
               .single();
             
-            const data = syncPromise(promise);
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o objeto
+            const data = response?.data || response;
             if (!data || !data.id) {
               throw new Error('Falha ao inserir registro: não foi possível obter o ID');
             }
@@ -612,7 +618,9 @@ function createDatabaseInterface() {
               .select()
               .single();
             
-            const data = syncPromise(promise);
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o objeto
+            const data = response?.data || response;
             if (!data || !data.id) {
               throw new Error('Falha ao inserir registro: não foi possível obter o ID');
             }
@@ -765,7 +773,9 @@ function createDatabaseInterface() {
               .select()
               .single();
             
-            const data = syncPromise(promise);
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o objeto
+            const data = response?.data || response;
             if (!data || !data.id) {
               throw new Error('Falha ao inserir registro: não foi possível obter o ID');
             }
@@ -786,7 +796,9 @@ function createDatabaseInterface() {
               .select()
               .single();
             
-            const data = syncPromise(promise);
+            const response = syncPromise(promise);
+            // Supabase retorna { data, error } ou diretamente o objeto
+            const data = response?.data || response;
             if (!data || !data.id) {
               throw new Error('Falha ao inserir registro: não foi possível obter o ID');
             }
