@@ -48,6 +48,12 @@ export async function seedAuthUser() {
       throw insertError;
     }
     
+    // Verificar se result existe e tem lastInsertRowid
+    if (!result || !result.lastInsertRowid) {
+      console.warn('⚠️  Não foi possível obter ID do usuário criado. Verifique a conexão com Supabase.');
+      return null;
+    }
+    
     console.log('✅ Usuário admin de autenticação criado com sucesso!');
     console.log(`   Email: admin@admin.com`);
     console.log(`   Senha: 123456`);

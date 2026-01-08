@@ -52,22 +52,38 @@ export async function seedDefaultUser() {
   };
 
     // Inserir usuário (garantindo que ativo = 1)
-    const result = db.prepare(`
-      INSERT INTO pix_users (
-        cnpj, nome, gw_app_key, basic_auth_base64, base_url, oauth_url,
-        chave_pix_recebedor, nome_recebedor, cidade_recebedor, ativo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-    `).run(
-      defaultUser.cnpj,
-      defaultUser.nome,
-      defaultUser.gw_app_key,
-      defaultUser.basic_auth_base64,
-      defaultUser.base_url,
-      defaultUser.oauth_url,
-      defaultUser.chave_pix_recebedor,
-      defaultUser.nome_recebedor,
-      defaultUser.cidade_recebedor
-    );
+    let result;
+    try {
+      result = db.prepare(`
+        INSERT INTO pix_users (
+          cnpj, nome, gw_app_key, basic_auth_base64, base_url, oauth_url,
+          chave_pix_recebedor, nome_recebedor, cidade_recebedor, ativo
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      `).run(
+        defaultUser.cnpj,
+        defaultUser.nome,
+        defaultUser.gw_app_key,
+        defaultUser.basic_auth_base64,
+        defaultUser.base_url,
+        defaultUser.oauth_url,
+        defaultUser.chave_pix_recebedor,
+        defaultUser.nome_recebedor,
+        defaultUser.cidade_recebedor
+      );
+    } catch (insertError) {
+      const errorMsg = insertError.message || String(insertError);
+      if (errorMsg.includes('Timeout')) {
+        console.warn('⚠️  Timeout ao criar usuário padrão. Verifique a conexão com Supabase.');
+        return null;
+      }
+      throw insertError;
+    }
+
+    // Verificar se result existe e tem lastInsertRowid
+    if (!result || !result.lastInsertRowid) {
+      console.warn('⚠️  Não foi possível obter ID do usuário criado. Verifique a conexão com Supabase.');
+      return null;
+    }
 
     console.log('✅ Usuário PIX padrão criado com sucesso!');
     console.log(`   CNPJ: ${defaultUser.cnpj}`);

@@ -117,47 +117,87 @@ app.use('/api/v1/pix', pixPublicRoutes);
 
 // Servir frontend React (Vite)
 const distPath = path.join(__dirname, 'dist');
-if (fs.existsSync(distPath)) {
+const distIndexPath = path.join(__dirname, 'dist', 'index.html');
+const publicPath = path.join(__dirname, 'public');
+const publicIndexPath = path.join(__dirname, 'public', 'index.html');
+
+// Verificar se dist existe e tem index.html
+const distExists = fs.existsSync(distIndexPath);
+
+if (distExists) {
+  // Servir arquivos estáticos do dist
   app.use(express.static(distPath));
-} else {
-  // Servir public como fallback se dist não existir
-  const publicPath = path.join(__dirname, 'public');
-  if (fs.existsSync(publicPath)) {
-    app.use(express.static(publicPath));
-  }
+  console.log('✅ Frontend React encontrado em dist/');
+} else if (fs.existsSync(publicPath)) {
+  // Fallback: servir public se dist não existir
+  app.use(express.static(publicPath));
+  console.log('⚠️  Frontend não encontrado, usando página de fallback');
 }
 
 // Rota para o frontend
 app.get('*', (req, res) => {
-  // Se não for uma rota de API, servir o index.html do React
+  // Se não for uma rota de API, servir o index.html
   if (!req.path.startsWith('/api')) {
-    const htmlIndex = path.join(__dirname, 'dist', 'index.html');
-    if (fs.existsSync(htmlIndex)) {
-      res.sendFile(htmlIndex);
-    } else {
-      // Fallback para public/index.html se dist não existir
-      const publicIndex = path.join(__dirname, 'public', 'index.html');
-      if (fs.existsSync(publicIndex)) {
-        res.sendFile(publicIndex);
-      } else {
-        res.json({
-          message: 'API PIX Jornada 3',
-          version: '1.0.0',
-          docs: '/api',
-          frontend: 'Frontend React disponível após build',
-          instructions: 'Execute: npm run build && npm start'
-        });
-      }
+    // Prioridade 1: dist/index.html (frontend construído)
+    if (fs.existsSync(distIndexPath)) {
+      res.sendFile(distIndexPath);
+      return;
     }
+    
+    // Prioridade 2: public/index.html (página de fallback)
+    if (fs.existsSync(publicIndexPath)) {
+      res.sendFile(publicIndexPath);
+      return;
+    }
+    
+    // Fallback final: JSON
+    res.json({
+      message: 'API PIX Jornada 3',
+      version: '1.0.0',
+      docs: '/api',
+      frontend: 'Frontend React disponível após build',
+      instructions: 'Execute: npm run build && npm start'
+    });
   } else {
     res.status(404).json({ error: 'API endpoint not found' });
   }
 });
 
+// Verificar se o frontend foi construído (verificação dinâmica)
+const checkFrontend = () => {
+  return fs.existsSync(path.join(__dirname, 'dist', 'index.html'));
+};
+
 // Iniciar servidor
 app.listen(PORT, () => {
+  const distExists = checkFrontend();
+  
   console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-  console.log(`📱 Frontend disponível em http://localhost:${PORT}`);
+  
+  if (distExists) {
+    console.log(`📱 Frontend disponível em http://localhost:${PORT}`);
+  } else {
+    console.log('');
+    console.log('⚠️  ═══════════════════════════════════════════════════════════');
+    console.log('   FRONTEND NÃO FOI CONSTRUÍDO');
+    console.log('   ═══════════════════════════════════════════════════════════');
+    console.log('');
+    console.log('📋 PARA CONSTRUIR O FRONTEND:');
+    console.log('');
+    console.log('   Execute no servidor:');
+    console.log('   npm install');
+    console.log('   npm run build');
+    console.log('   npm start');
+    console.log('');
+    console.log('   OU use: npm run build:start');
+    console.log('');
+    console.log('⚠️  O servidor continuará rodando, mas o frontend');
+    console.log('   não estará disponível até o build ser executado.');
+    console.log('   ═══════════════════════════════════════════════════════════');
+    console.log('');
+    console.log(`📱 Frontend: Execute 'npm run build' para construir`);
+  }
+  
   console.log(`🔌 API disponível em http://localhost:${PORT}/api`);
 });
 
