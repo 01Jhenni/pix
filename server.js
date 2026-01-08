@@ -174,13 +174,14 @@ app.get('*', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.sendFile(distIndexPath);
+    // Usar caminho relativo para evitar duplicação
+    res.sendFile('dist/index.html', { root: __dirname });
     return;
   }
   
   // Prioridade 2: public/index.html (página de fallback)
   if (fs.existsSync(publicIndexPath)) {
-    res.sendFile(publicIndexPath);
+    res.sendFile('public/index.html', { root: __dirname });
     return;
   }
   
