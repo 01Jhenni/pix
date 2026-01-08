@@ -143,9 +143,9 @@ function createDatabaseInterface() {
     prepare: (query) => {
       return {
         get: (...params) => {
-          // Para queries de verificação (SELECT), usar admin para bypass RLS se necessário
-          // Mas tentar primeiro com public key para melhor performance
-          const client = initSupabase(); // SELECT queries podem usar public key
+          // Para queries de verificação (SELECT), usar admin para bypass RLS
+          // Isso evita problemas com políticas RLS que podem causar timeouts
+          const client = initSupabaseAdmin(); // Usar admin para bypass RLS
           
           // SELECT ... FROM pix_users WHERE id = ?
           if (query.includes('SELECT') && query.includes('FROM pix_users') && query.includes('WHERE id = ?')) {
@@ -405,7 +405,8 @@ function createDatabaseInterface() {
         },
         
         all: (...params) => {
-          const client = initSupabase();
+          // Usar admin para queries SELECT também, para evitar problemas com RLS
+          const client = initSupabaseAdmin();
           
           // SELECT * FROM pix_users
           if (query.includes('FROM pix_users') && !query.includes('JOIN')) {
