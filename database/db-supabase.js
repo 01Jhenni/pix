@@ -367,7 +367,7 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.gt('expires_at', expiresAt);
             }
             
-            return syncPromise(queryBuilder.maybeSingle());
+            return syncPromise(queryBuilder.maybeSingle(), true); // allowNull para SELECT
           }
           
           // COUNT(*)
