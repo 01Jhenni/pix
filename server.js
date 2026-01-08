@@ -123,14 +123,37 @@ const publicIndexPath = path.join(__dirname, 'public', 'index.html');
 
 // Verificar se dist existe e tem index.html
 const distExists = fs.existsSync(distIndexPath);
+const distDirExists = fs.existsSync(distPath);
+
+// Debug: mostrar caminhos
+if (process.env.NODE_ENV !== 'production') {
+  console.log(`📂 __dirname: ${__dirname}`);
+  console.log(`📂 distPath: ${distPath}`);
+  console.log(`📂 distIndexPath: ${distIndexPath}`);
+  console.log(`📂 distExists: ${distExists}`);
+  console.log(`📂 distDirExists: ${distDirExists}`);
+}
 
 if (distExists) {
-  // Servir arquivos estáticos do dist
-  app.use(express.static(distPath));
+  // Servir arquivos estáticos do dist com headers para evitar cache
+  app.use(express.static(distPath, { 
+    index: 'index.html',
+    extensions: ['html', 'js', 'css', 'json', 'png', 'jpg', 'svg'],
+    setHeaders: (res, path) => {
+      // Não cachear index.html
+      if (path.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    }
+  }));
   console.log('✅ Frontend React encontrado em dist/');
 } else if (fs.existsSync(publicPath)) {
   // Fallback: servir public se dist não existir
-  app.use(express.static(publicPath));
+  app.use(express.static(publicPath, { 
+    index: 'index.html'
+  }));
   console.log('⚠️  Frontend não encontrado, usando página de fallback');
 }
 
@@ -140,6 +163,10 @@ app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
     // Prioridade 1: dist/index.html (frontend construído)
     if (fs.existsSync(distIndexPath)) {
+      // Headers para evitar cache
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(distIndexPath);
       return;
     }

@@ -3,11 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 // Configuração do Supabase
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://joksegwuxhqgoigvhebb.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'sb_publishable_PYm4oqLlgttAQAFmo10dVQ_o6FIW96r';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SECRET_KEY || 'sb_secret_MzHD848Ilfhk2zqZlWdAOg_lzcbrrs9';
 
 let supabase;
+let supabaseAdmin; // Cliente com service key para operações administrativas
 let dbInterface;
 
-// Inicializar cliente Supabase
+// Inicializar cliente Supabase (public key)
 function initSupabase() {
   if (!supabase) {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -39,9 +41,33 @@ function initSupabase() {
   return supabase;
 }
 
+// Inicializar cliente Supabase Admin (service key) - para operações que precisam bypass RLS
+function initSupabaseAdmin() {
+  if (!supabaseAdmin) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+      // Se não tiver service key, usar a public key
+      return initSupabase();
+    }
+    
+    try {
+      supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      });
+      console.log('✅ Cliente Supabase Admin inicializado (service key)');
+    } catch (error) {
+      console.warn('⚠️  Erro ao criar cliente Supabase Admin, usando cliente público:', error.message);
+      return initSupabase();
+    }
+  }
+  return supabaseAdmin;
+}
+
 // Helper para executar Promises de forma síncrona (sem deasync)
 // Usa uma abordagem melhorada que permite que o event loop processe
-function syncPromise(promise) {
+function syncPromise(promise, allowNull = false) {
   let result;
   let error;
   let done = false;
@@ -57,7 +83,7 @@ function syncPromise(promise) {
     });
   
   const startTime = Date.now();
-  const timeout = 15000; // 15 segundos timeout (reduzido para detectar problemas mais rápido)
+  const timeout = 20000; // 20 segundos timeout (aumentado para conexões mais lentas)
   
   // Polling melhorado com delays maiores para permitir que o event loop processe
   let iterations = 0;
@@ -84,9 +110,11 @@ function syncPromise(promise) {
   if (!done) {
     const elapsed = Date.now() - startTime;
     const errorMsg = `Timeout ao executar operação no banco de dados (${elapsed}ms). Verifique se as tabelas foram criadas no Supabase e se a conexão está funcionando.`;
-    // Não lançar erro, apenas retornar null para queries de verificação
-    console.warn(`⚠️  ${errorMsg}`);
-    return null;
+    if (allowNull) {
+      console.warn(`⚠️  ${errorMsg}`);
+      return null;
+    }
+    throw new Error(errorMsg);
   }
   
   if (error) {
@@ -98,8 +126,8 @@ function syncPromise(promise) {
       throw new Error(`Tabela "${tableName}" não encontrada no Supabase. Execute database/supabase-schema.sql no Supabase SQL Editor.`);
     }
     // Para outros erros, verificar se é um erro de RLS ou conexão
-    if (errorMsg.includes('permission denied') || errorMsg.includes('RLS')) {
-      throw new Error(`Erro de permissão no Supabase. Verifique as políticas RLS (Row Level Security) nas tabelas.`);
+    if (errorMsg.includes('permission denied') || errorMsg.includes('RLS') || errorMsg.includes('row-level security')) {
+      throw new Error(`Erro de permissão no Supabase. Verifique as políticas RLS (Row Level Security) nas tabelas ou use a service key.`);
     }
     throw error;
   }
@@ -113,7 +141,7 @@ function createDatabaseInterface() {
     prepare: (query) => {
       return {
         get: (...params) => {
-          const client = initSupabase();
+          const client = initSupabase(); // SELECT queries podem usar public key
           
           // SELECT ... FROM pix_users WHERE id = ?
           if (query.includes('SELECT') && query.includes('FROM pix_users') && query.includes('WHERE id = ?')) {
@@ -124,7 +152,7 @@ function createDatabaseInterface() {
               .eq('id', id)
               .maybeSingle();
             
-            const data = syncPromise(promise);
+            const data = syncPromise(promise, true); // allowNull para SELECT
             
             // Se tem AND ativo = 1, verificar
             if (query.includes('AND ativo = 1') && data && data.ativo !== 1) {
@@ -148,7 +176,7 @@ function createDatabaseInterface() {
               .eq('cnpj', cnpj)
               .maybeSingle();
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM transactions WHERE t.id = ? JOIN pix_users
@@ -206,7 +234,7 @@ function createDatabaseInterface() {
               .eq('pix_user_id', userId)
               .maybeSingle();
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM user_profiles WHERE id = ?
@@ -218,7 +246,7 @@ function createDatabaseInterface() {
               .eq('id', id)
               .maybeSingle();
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM api_keys WHERE key = ?
@@ -230,7 +258,7 @@ function createDatabaseInterface() {
               .eq('key', key)
               .maybeSingle();
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM api_keys WHERE pix_user_id = ?
@@ -241,7 +269,7 @@ function createDatabaseInterface() {
               .select('*')
               .eq('pix_user_id', userId);
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM api_keys WHERE id = ?
@@ -253,7 +281,7 @@ function createDatabaseInterface() {
               .eq('id', id)
               .maybeSingle();
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM auth_users WHERE id = ?
@@ -265,7 +293,7 @@ function createDatabaseInterface() {
               .eq('id', id)
               .maybeSingle();
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM auth_users WHERE username = ? AND active = 1
@@ -319,7 +347,7 @@ function createDatabaseInterface() {
               .eq('email', email)
               .maybeSingle();
             
-            return syncPromise(promise);
+            return syncPromise(promise, true); // allowNull para SELECT
           }
           
           // SELECT ... FROM sessions WHERE token = ? AND expires_at > ?
@@ -386,7 +414,7 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.order('created_at', { ascending: false });
             }
             
-            return syncPromise(queryBuilder) || [];
+            return syncPromise(queryBuilder, true) || []; // allowNull para SELECT
           }
           
           // SELECT * FROM transactions
@@ -418,7 +446,7 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.range(offset, offset + limit - 1);
             }
             
-            const data = syncPromise(queryBuilder) || [];
+            const data = syncPromise(queryBuilder, true) || []; // allowNull para SELECT
             
             // Formatar dados com join
             return data.map(t => ({
@@ -437,7 +465,7 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.eq('pix_user_id', params[0]);
             }
             
-            return syncPromise(queryBuilder) || [];
+            return syncPromise(queryBuilder, true) || []; // allowNull para SELECT
           }
           
           // SELECT * FROM api_keys
@@ -452,7 +480,7 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.order('created_at', { ascending: false });
             }
             
-            return syncPromise(queryBuilder) || [];
+            return syncPromise(queryBuilder, true) || []; // allowNull para SELECT
           }
           
           // SELECT * FROM auth_users
@@ -463,14 +491,15 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.eq('active', 1);
             }
             
-            return syncPromise(queryBuilder) || [];
+            return syncPromise(queryBuilder, true) || []; // allowNull para SELECT
           }
           
           return [];
         },
         
         run: (...params) => {
-          const client = initSupabase();
+          // Usar cliente admin para operações de escrita (INSERT, UPDATE, DELETE)
+          const client = initSupabaseAdmin();
           
           // INSERT INTO pix_users
           if (query.includes('INSERT INTO pix_users')) {
@@ -494,6 +523,9 @@ function createDatabaseInterface() {
               .single();
             
             const data = syncPromise(promise);
+            if (!data || !data.id) {
+              throw new Error('Falha ao inserir registro: não foi possível obter o ID');
+            }
             return { lastInsertRowid: data.id, changes: 1 };
           }
           
@@ -525,6 +557,9 @@ function createDatabaseInterface() {
               .single();
             
             const data = syncPromise(promise);
+            if (!data || !data.id) {
+              throw new Error('Falha ao inserir registro: não foi possível obter o ID');
+            }
             return { lastInsertRowid: data.id, changes: 1 };
           }
           
@@ -555,6 +590,9 @@ function createDatabaseInterface() {
               .single();
             
             const data = syncPromise(promise);
+            if (!data || !data.id) {
+              throw new Error('Falha ao inserir registro: não foi possível obter o ID');
+            }
             return { lastInsertRowid: data.id, changes: 1 };
           }
           
@@ -575,6 +613,9 @@ function createDatabaseInterface() {
               .single();
             
             const data = syncPromise(promise);
+            if (!data || !data.id) {
+              throw new Error('Falha ao inserir registro: não foi possível obter o ID');
+            }
             return { lastInsertRowid: data.id, changes: 1 };
           }
           
@@ -725,6 +766,9 @@ function createDatabaseInterface() {
               .single();
             
             const data = syncPromise(promise);
+            if (!data || !data.id) {
+              throw new Error('Falha ao inserir registro: não foi possível obter o ID');
+            }
             return { lastInsertRowid: data.id, changes: 1 };
           }
           
@@ -743,6 +787,9 @@ function createDatabaseInterface() {
               .single();
             
             const data = syncPromise(promise);
+            if (!data || !data.id) {
+              throw new Error('Falha ao inserir registro: não foi possível obter o ID');
+            }
             return { lastInsertRowid: data.id, changes: 1 };
           }
           
