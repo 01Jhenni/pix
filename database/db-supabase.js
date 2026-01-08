@@ -83,28 +83,30 @@ function syncPromise(promise, allowNull = false) {
     });
   
   const startTime = Date.now();
-  const timeout = 20000; // 20 segundos timeout (aumentado para conexões mais lentas)
+  const timeout = 30000; // 30 segundos timeout (aumentado para conexões lentas)
   
-  // Polling melhorado com delays maiores para permitir que o event loop processe
+  // Polling otimizado - usar delays maiores para não bloquear o event loop
   let iterations = 0;
   while (!done && (Date.now() - startTime) < timeout) {
     iterations++;
     
-    // A cada 100 iterações, fazer um delay maior para não sobrecarregar
-    if (iterations % 100 === 0) {
-      const wait = (ms) => {
-        const start = Date.now();
-        while (Date.now() - start < ms && !done) {}
-      };
-      wait(10); // Delay de 10ms a cada 100 iterações
-    } else {
-      // Delay mínimo para não bloquear completamente
-      const wait = (ms) => {
-        const start = Date.now();
-        while (Date.now() - start < ms && !done) {}
-      };
-      wait(1); // Delay de 1ms normalmente
-    }
+    // Usar delay maior para permitir que o event loop processe outras operações
+    // Delay progressivo: menor no início, maior depois
+    const elapsed = Date.now() - startTime;
+    let delay = 5; // Delay base de 5ms
+    
+    // Aumentar delay progressivamente
+    if (elapsed > 1000) delay = 10;
+    if (elapsed > 5000) delay = 20;
+    if (elapsed > 10000) delay = 50;
+    
+    const wait = (ms) => {
+      const start = Date.now();
+      while (Date.now() - start < ms && !done) {
+        // Pequeno yield para permitir que outras operações sejam processadas
+      }
+    };
+    wait(delay);
   }
   
   if (!done) {
@@ -141,6 +143,8 @@ function createDatabaseInterface() {
     prepare: (query) => {
       return {
         get: (...params) => {
+          // Para queries de verificação (SELECT), usar admin para bypass RLS se necessário
+          // Mas tentar primeiro com public key para melhor performance
           const client = initSupabase(); // SELECT queries podem usar public key
           
           // SELECT ... FROM pix_users WHERE id = ?
@@ -308,7 +312,7 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.eq('active', 1);
             }
             
-            return syncPromise(queryBuilder.maybeSingle());
+            return syncPromise(queryBuilder.maybeSingle(), true); // allowNull para SELECT
           }
           
           // SELECT ... FROM auth_users WHERE email = ? AND active = 1
@@ -323,7 +327,7 @@ function createDatabaseInterface() {
               queryBuilder = queryBuilder.eq('active', 1);
             }
             
-            return syncPromise(queryBuilder.maybeSingle());
+            return syncPromise(queryBuilder.maybeSingle(), true); // allowNull para SELECT
           }
           
           // SELECT id FROM auth_users WHERE username = ? OR email = ?
@@ -337,7 +341,7 @@ function createDatabaseInterface() {
               .eq('username', username)
               .maybeSingle();
             
-            let result = syncPromise(promise);
+            let result = syncPromise(promise, true); // allowNull para SELECT
             if (result) return result;
             
             // Se não encontrou, buscar por email
