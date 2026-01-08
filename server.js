@@ -116,7 +116,16 @@ app.use('/api/api-keys', authenticate, apiKeyRoutes);
 app.use('/api/v1/pix', pixPublicRoutes);
 
 // Servir frontend React (Vite)
-app.use(express.static(path.join(__dirname, 'dist')));
+const distPath = path.join(__dirname, 'dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+} else {
+  // Servir public como fallback se dist não existir
+  const publicPath = path.join(__dirname, 'public');
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath));
+  }
+}
 
 // Rota para o frontend
 app.get('*', (req, res) => {
@@ -135,7 +144,8 @@ app.get('*', (req, res) => {
           message: 'API PIX Jornada 3',
           version: '1.0.0',
           docs: '/api',
-          frontend: 'Frontend React disponível após build'
+          frontend: 'Frontend React disponível após build',
+          instructions: 'Execute: npm run build && npm start'
         });
       }
     }

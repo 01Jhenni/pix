@@ -8,6 +8,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build": "vite build",
+    "build:start": "npm run build && npm start",
     "preview": "vite preview",
     "setup:supabase": "node scripts/setup-supabase.js",
     "check:tables": "node scripts/create-tables-supabase.js",

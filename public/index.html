@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIX Jornada 3 - Sistema Completo</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+      }
+      .container {
+        text-align: center;
+        max-width: 600px;
+        padding: 2rem;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+      }
+      p {
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+        opacity: 0.9;
+      }
+      .code {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        margin: 1rem 0;
+        word-break: break-all;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 24px;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        margin: 0.5rem;
+        transition: all 0.3s;
+      }
+      .button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+      .warning {
+        background: rgba(255, 193, 7, 0.2);
+        border-left: 4px solid #ffc107;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🚀 PIX Jornada 3</h1>
+      <p>Frontend React não foi construído ainda.</p>
+      
+      <div class="warning">
+        <strong>⚠️ Para construir o frontend, execute no servidor:</strong>
+        <div class="code">npm install<br/>npm run build<br/>npm start</div>
+      </div>
+
+      <p>Ou se estiver em desenvolvimento, use:</p>
+      <div class="code">npm run dev</div>
+
+      <div style="margin-top: 2rem;">
+        <a href="/api" class="button">Ver API</a>
+        <a href="/api/auth/me" class="button">Verificar Auth</a>
+      </div>
+    </div>
+  </body>
+</html>
