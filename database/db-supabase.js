@@ -57,21 +57,36 @@ function syncPromise(promise) {
     });
   
   const startTime = Date.now();
-  const timeout = 30000; // 30 segundos timeout
+  const timeout = 15000; // 15 segundos timeout (reduzido para detectar problemas mais rápido)
   
-  // Polling com delays pequenos para não bloquear completamente o event loop
+  // Polling melhorado com delays maiores para permitir que o event loop processe
+  let iterations = 0;
   while (!done && (Date.now() - startTime) < timeout) {
-    // Usar um delay mínimo para permitir que outras operações sejam processadas
-    const wait = (ms) => {
-      const start = Date.now();
-      while (Date.now() - start < ms && !done) {}
-    };
-    wait(1); // Delay de 1ms
+    iterations++;
+    
+    // A cada 100 iterações, fazer um delay maior para não sobrecarregar
+    if (iterations % 100 === 0) {
+      const wait = (ms) => {
+        const start = Date.now();
+        while (Date.now() - start < ms && !done) {}
+      };
+      wait(10); // Delay de 10ms a cada 100 iterações
+    } else {
+      // Delay mínimo para não bloquear completamente
+      const wait = (ms) => {
+        const start = Date.now();
+        while (Date.now() - start < ms && !done) {}
+      };
+      wait(1); // Delay de 1ms normalmente
+    }
   }
   
   if (!done) {
     const elapsed = Date.now() - startTime;
-    throw new Error(`Timeout ao executar operação no banco de dados (${elapsed}ms). Verifique se as tabelas foram criadas no Supabase e se a conexão está funcionando.`);
+    const errorMsg = `Timeout ao executar operação no banco de dados (${elapsed}ms). Verifique se as tabelas foram criadas no Supabase e se a conexão está funcionando.`;
+    // Não lançar erro, apenas retornar null para queries de verificação
+    console.warn(`⚠️  ${errorMsg}`);
+    return null;
   }
   
   if (error) {
@@ -81,6 +96,10 @@ function syncPromise(promise) {
       const tableMatch = errorMsg.match(/relation "([^"]+)"/) || errorMsg.match(/table "([^"]+)"/);
       const tableName = tableMatch ? tableMatch[1] : 'desconhecida';
       throw new Error(`Tabela "${tableName}" não encontrada no Supabase. Execute database/supabase-schema.sql no Supabase SQL Editor.`);
+    }
+    // Para outros erros, verificar se é um erro de RLS ou conexão
+    if (errorMsg.includes('permission denied') || errorMsg.includes('RLS')) {
+      throw new Error(`Erro de permissão no Supabase. Verifique as políticas RLS (Row Level Security) nas tabelas.`);
     }
     throw error;
   }

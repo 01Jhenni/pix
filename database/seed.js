@@ -7,8 +7,18 @@ export async function seedDefaultUser() {
   try {
     const db = getDatabase();
     
-    // Verificar se já existe usuário com esse CNPJ
-    const existing = db.prepare('SELECT id FROM pix_users WHERE cnpj = ?').get('02429647000169');
+    // Verificar se já existe usuário com esse CNPJ (com tratamento de timeout)
+    let existing;
+    try {
+      existing = db.prepare('SELECT id FROM pix_users WHERE cnpj = ?').get('02429647000169');
+    } catch (checkError) {
+      const errorMsg = checkError.message || String(checkError);
+      if (errorMsg.includes('Timeout') || errorMsg.includes('Tabela')) {
+        console.warn('⚠️  Não foi possível verificar usuário padrão (tabela pode não existir ou conexão lenta)');
+        return null;
+      }
+      throw checkError;
+    }
     
     if (existing) {
       console.log('✅ Usuário PIX padrão já existe');
@@ -16,8 +26,13 @@ export async function seedDefaultUser() {
     }
   } catch (error) {
     // Se der erro, pode ser que a tabela não exista ainda
-    console.warn('⚠️  Não foi possível verificar usuário padrão:', error.message);
-    throw error;
+    const errorMsg = error.message || String(error);
+    if (errorMsg.includes('Timeout')) {
+      console.warn('⚠️  Timeout ao verificar usuário padrão. Verifique a conexão com Supabase.');
+      return null;
+    }
+    console.warn('⚠️  Não foi possível verificar usuário padrão:', errorMsg);
+    return null;
   }
   
   try {
@@ -67,8 +82,17 @@ export async function seedDefaultUser() {
     
     return result.lastInsertRowid;
   } catch (error) {
-    console.error('❌ Erro ao criar usuário padrão:', error.message);
-    throw error;
+    const errorMsg = error.message || String(error);
+    if (errorMsg.includes('Timeout')) {
+      console.warn('⚠️  Timeout ao criar usuário padrão. Verifique a conexão com Supabase.');
+      return null;
+    }
+    if (errorMsg.includes('Tabela') && errorMsg.includes('não encontrada')) {
+      console.warn('⚠️  Tabela pix_users não encontrada. Execute database/supabase-schema.sql no Supabase SQL Editor.');
+      return null;
+    }
+    console.warn('⚠️  Erro ao criar usuário padrão:', errorMsg);
+    return null;
   }
 }
 
