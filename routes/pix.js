@@ -332,16 +332,21 @@ publicRouter.post('/jornada3', async (req, res) => {
         },
         
         // Valores
+        // Valores
         valor: {
           primeiroPagamento: parseFloat(dados.valorPrimeiroPagamento),
           recorrencia: parseFloat(dados.valorRec),
           primeiroPagamentoFormatado: `R$ ${parseFloat(dados.valorPrimeiroPagamento).toFixed(2).replace('.', ',')}`,
           recorrenciaFormatado: `R$ ${parseFloat(dados.valorRec).toFixed(2).replace('.', ',')}`
         },
+        
+        // Dados adicionais
         periodicidade: dados.periodicidade,
         dataInicial: dados.dataInicial,
         contrato: dados.contrato,
         createdAt: transaction?.created_at || new Date().toISOString(),
+        
+        // Metadata completa
         metadata: resultado._metadata
       }
     });
