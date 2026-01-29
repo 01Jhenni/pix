@@ -95,23 +95,43 @@ router.post('/jornada3', async (req, res) => {
       });
     }
 
+    // Retornar resposta completa com QR Code e copia e cola
     res.json({
       success: true,
       data: {
+        // IDs principais
         txid: resultado._metadata?.txid,
         idRec: resultado._metadata?.idRec,
-        pixCopiaECola: pixCopiaECola,
-        qrCodeImage: qrCodeImage,
+        
+        // QR Code e Copia e Cola (sempre presentes)
+        pixCopiaECola: pixCopiaECola, // Código PIX para copiar e colar
+        qrCodeImage: qrCodeImage,     // QR Code em Base64 (data:image/png;base64,...)
+        qrCode: pixCopiaECola,        // Alias para compatibilidade
+        
+        // Informações da jornada
         jornada: resultado.dadosQR?.jornada || 'JORNADA_3',
         status: resultado.status || 'ATIVA',
+        
+        // Dados do devedor
         devedor: {
           cpf: dados.cpfDevedor,
           nome: dados.nomeDevedor
         },
+        
+        // Valores
         valor: {
           primeiroPagamento: dados.valorPrimeiroPagamento,
-          recorrencia: dados.valorRec
+          recorrencia: dados.valorRec,
+          primeiroPagamentoFormatado: `R$ ${parseFloat(dados.valorPrimeiroPagamento).toFixed(2).replace('.', ',')}`,
+          recorrenciaFormatado: `R$ ${parseFloat(dados.valorRec).toFixed(2).replace('.', ',')}`
         },
+        
+        // Dados adicionais
+        periodicidade: dados.periodicidade,
+        dataInicial: dados.dataInicial,
+        contrato: dados.contrato,
+        
+        // Metadata completa
         metadata: resultado._metadata
       }
     });
@@ -287,20 +307,31 @@ publicRouter.post('/jornada3', async (req, res) => {
     // Buscar transação completa do banco para retornar dados completos
     const transaction = getTransactionByTxid(resultado._metadata?.txid);
     
+    // Retornar resposta completa com QR Code e copia e cola (formato compatível com n8n)
     res.json({
       success: true,
       message: 'Recorrência PIX criada com sucesso. QR Code gerado.',
       data: {
+        // IDs principais
         txid: resultado._metadata?.txid,
         idRec: resultado._metadata?.idRec,
-        pixCopiaECola: pixCopiaECola,
-        qrCodeImage: qrCodeImage,
-        status: resultado.status || 'ATIVA',
+        
+        // QR Code e Copia e Cola (sempre presentes)
+        pixCopiaECola: pixCopiaECola, // Código PIX para copiar e colar
+        qrCodeImage: qrCodeImage,     // QR Code em Base64 (data:image/png;base64,...)
+        qrCode: pixCopiaECola,        // Alias para compatibilidade
+        
+        // Informações da jornada
         jornada: resultado.dadosQR?.jornada || 'JORNADA_3',
+        status: resultado.status || 'ATIVA',
+        
+        // Dados do devedor
         devedor: {
           cpf: dados.cpfDevedor,
           nome: dados.nomeDevedor
         },
+        
+        // Valores
         valor: {
           primeiroPagamento: parseFloat(dados.valorPrimeiroPagamento),
           recorrencia: parseFloat(dados.valorRec),
