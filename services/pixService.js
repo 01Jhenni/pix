@@ -296,18 +296,19 @@ export async function getOAuthToken(pixUserId) {
 
     return token;
   } catch (error) {
+    const statusCode = error.response?.status;
+    const contentType = error.response?.headers?.['content-type'] || '';
+    
     console.error('Erro ao obter token OAuth:', {
       message: error.message,
       code: error.code,
-      status: error.response?.status,
+      status: statusCode,
       statusText: error.response?.statusText,
-      contentType: error.response?.headers?.['content-type']
+      contentType: contentType
     });
     
     // Capturar mensagem de erro de forma mais completa
     let errorMsg = '';
-    const statusCode = error.response?.status;
-    const contentType = error.response?.headers?.['content-type'] || '';
     
     // Se a resposta for HTML (página de erro do BB)
     if (contentType.includes('text/html') || contentType.includes('text/plain')) {
@@ -348,7 +349,6 @@ export async function getOAuthToken(pixUserId) {
     
     const errorCode = error.code || '';
     const errorString = String(error.message || '');
-    const statusCode = error.response?.status;
     
     // Detectar erro de certificado SSL (bad certificate = alert 42)
     const isSSLError = errorMsg.includes('SSL') || errorMsg.includes('certificate') || errorMsg.includes('bad certificate') || 
