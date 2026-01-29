@@ -2043,21 +2043,29 @@
             headers.Authorization = 'Bearer ' + token;
           }
 
-          const res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
-          let data = null;
-
           try {
-            data = await res.json();
-          } catch (e) {
-            // ignore
-          }
+            const res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+            let data = null;
 
-          if (!res.ok) {
-            const msg = (data && (data.error || data.message)) || 'Erro inesperado na API';
-            throw new Error(msg);
-          }
+            try {
+              data = await res.json();
+            } catch (e) {
+              console.error('Erro ao parsear JSON:', e, 'Response:', res);
+              throw new Error('Resposta inválida da API');
+            }
 
-          return data;
+            if (!res.ok) {
+              const msg = (data && (data.error || data.message)) || `Erro ${res.status}: ${res.statusText}`;
+              console.error('Erro na API:', path, msg, data);
+              throw new Error(msg);
+            }
+
+            // Retornar data diretamente se for sucesso
+            return data;
+          } catch (error) {
+            console.error('Erro em apiFetch:', path, error);
+            throw error;
+          }
         }
 
         function setActiveSection(sectionId) {
@@ -2175,8 +2183,9 @@
               apiFetch('/transactions?limit=1000')
             ]);
 
-            const users = (usersRes && usersRes.data) || [];
-            const trans = (transRes && transRes.data) || [];
+            // Tratar diferentes formatos de resposta
+            const users = (usersRes?.data) || (Array.isArray(usersRes) ? usersRes : []);
+            const trans = (transRes?.data) || (Array.isArray(transRes) ? transRes : []);
 
             const active = trans.filter((t) => t.status === 'ATIVA').length;
             const pending = trans.filter((t) => t.status === 'PENDENTE').length;
@@ -2200,7 +2209,8 @@
         async function loadPixUsers() {
           try {
             const res = await apiFetch('/users');
-            const users = (res && res.data) || [];
+            // Tratar diferentes formatos de resposta
+            const users = (res?.data) || (Array.isArray(res) ? res : []);
 
             if (!users.length) {
               pixUsersTableBody.innerHTML =
@@ -2281,7 +2291,8 @@
         async function loadTransactions() {
           try {
             const res = await apiFetch('/transactions?limit=100');
-            const trans = (res && res.data) || [];
+            // Tratar diferentes formatos de resposta
+            const trans = (res?.data) || (Array.isArray(res) ? res : []);
 
             if (!trans.length) {
               transactionsTableBody.innerHTML =
@@ -2769,16 +2780,43 @@
           });
         }
 
+        // Inicializar: esconder app e mostrar login por padrão
+        if (appRoot) {
+          appRoot.style.opacity = '0';
+          appRoot.style.pointerEvents = 'none';
+        }
+        if (loginOverlay) {
+          loginOverlay.classList.remove('hidden');
+          loginOverlay.style.display = 'flex';
+        }
+
         // Verificar se já está logado ao carregar
         (async () => {
-          const user = await checkAuth();
-          if (user) {
-            await loadAppData(user);
-          } else {
-            // Mostrar tela de login
+          try {
+            const user = await checkAuth();
+            if (user) {
+              await loadAppData(user);
+            } else {
+              // Garantir que login está visível
+              if (loginOverlay) {
+                loginOverlay.classList.remove('hidden');
+                loginOverlay.style.display = 'flex';
+              }
+              if (appRoot) {
+                appRoot.style.opacity = '0';
+                appRoot.style.pointerEvents = 'none';
+              }
+            }
+          } catch (error) {
+            console.error('Erro ao verificar autenticação:', error);
+            // Em caso de erro, mostrar login
             if (loginOverlay) {
               loginOverlay.classList.remove('hidden');
               loginOverlay.style.display = 'flex';
+            }
+            if (appRoot) {
+              appRoot.style.opacity = '0';
+              appRoot.style.pointerEvents = 'none';
             }
           }
         })();
