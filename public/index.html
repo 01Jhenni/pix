@@ -2017,12 +2017,17 @@
         }
 
         function getToken() {
-          // Autenticação desativada: sempre sem token
-          return '';
+          // Buscar token do localStorage
+          return localStorage.getItem('auth_token') || '';
         }
 
         function setToken(token) {
-          // Autenticação desativada: função mantida apenas por compatibilidade
+          // Salvar token no localStorage
+          if (token) {
+            localStorage.setItem('auth_token', token);
+          } else {
+            localStorage.removeItem('auth_token');
+          }
         }
 
         async function apiFetch(path, options) {
@@ -2511,9 +2516,12 @@
           }
         });
 
-        logoutBtn.addEventListener('click', () => {
-          showToast('Login desativado neste ambiente. Você já está com acesso total.', 'info');
-        });
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', () => {
+            doLogout();
+            showToast('Logout realizado com sucesso', 'success');
+          });
+        }
 
         // Funções para a aba de Teste PIX
         const testPixForm = document.getElementById('testPixForm');
@@ -2631,30 +2639,82 @@
           }
         });
 
-        // Login desativado: esconder overlay e carregar dados diretamente
-        async function bootstrapWithoutAuth() {
+        // Função para verificar se usuário está logado
+        async function checkAuth() {
+          const token = getToken();
+          if (!token) {
+            return false;
+          }
+
+          try {
+            const res = await apiFetch('/auth/me');
+            if (res.success && res.data) {
+              return res.data;
+            }
+          } catch (error) {
+            // Token inválido ou expirado
+            setToken('');
+            return false;
+          }
+          return false;
+        }
+
+        // Função para fazer login
+        async function doLogin(username, password) {
+          try {
+            const res = await apiFetch('/auth/login', {
+              method: 'POST',
+              body: JSON.stringify({ username, password })
+            });
+
+            if (res.success && res.data && res.data.token) {
+              setToken(res.data.token);
+              return res.data.user;
+            }
+            throw new Error(res.error || 'Erro ao fazer login');
+          } catch (error) {
+            throw error;
+          }
+        }
+
+        // Função para fazer logout
+        function doLogout() {
+          const token = getToken();
+          if (token) {
+            apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
+          }
+          setToken('');
+          if (loginOverlay) {
+            loginOverlay.classList.remove('hidden');
+            loginOverlay.style.display = 'flex';
+          }
+          if (appRoot) {
+            appRoot.style.opacity = '0';
+            appRoot.style.pointerEvents = 'none';
+          }
+        }
+
+        // Função para carregar dados após login
+        async function loadAppData(user) {
           if (loginOverlay) {
             loginOverlay.classList.add('hidden');
             loginOverlay.style.display = 'none';
-            loginOverlay.style.pointerEvents = 'none';
-            loginOverlay.style.zIndex = '-1';
           }
           
           if (appRoot) {
             appRoot.style.opacity = '1';
             appRoot.style.pointerEvents = 'auto';
-            appRoot.style.zIndex = '1';
           }
           
-          // Verificar se elementos existem antes de atualizar
+          // Atualizar informações do usuário
           if (userName) {
-            userName.textContent = 'Admin Local';
+            userName.textContent = user.name || user.username;
           }
           if (userRole) {
-            userRole.textContent = 'Acesso sem login';
+            userRole.textContent = user.role || 'Admin';
           }
           if (userAvatar) {
-            userAvatar.textContent = 'A';
+            userAvatar.textContent = (user.name || user.username || 'A').charAt(0).toUpperCase();
           }
 
           // Garantir que o sidebar seja clicável
@@ -2690,7 +2750,38 @@
           }, 500);
         }
 
-        bootstrapWithoutAuth();
+        // Event listener para formulário de login
+        if (loginForm) {
+          loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(loginForm);
+            const username = formData.get('username');
+            const password = formData.get('password');
+
+            try {
+              showToast('Fazendo login...', 'info');
+              const user = await doLogin(username, password);
+              showToast('Login realizado com sucesso!', 'success');
+              await loadAppData(user);
+            } catch (error) {
+              showToast(error.message || 'Erro ao fazer login. Verifique suas credenciais.', 'error');
+            }
+          });
+        }
+
+        // Verificar se já está logado ao carregar
+        (async () => {
+          const user = await checkAuth();
+          if (user) {
+            await loadAppData(user);
+          } else {
+            // Mostrar tela de login
+            if (loginOverlay) {
+              loginOverlay.classList.remove('hidden');
+              loginOverlay.style.display = 'flex';
+            }
+          }
+        })();
 
         // Event listener para o botão "Ver Documentação"
         const btnToggleDocs = document.getElementById('btnToggleDocs');

@@ -24,10 +24,47 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Função para criar admin automaticamente se não existir
+async function ensureAdminExists() {
+  try {
+    const { getAuthUserByEmail, getAuthUserByUsername, createAuthUser } = await import('./database/sqlite-db.js');
+    const bcrypt = (await import('bcryptjs')).default;
+    
+    const ADMIN_EMAIL = 'admin@admin.com';
+    const ADMIN_USERNAME = 'admin';
+    const ADMIN_PASSWORD = 'CeciM@042425';
+    const ADMIN_NAME = 'Administrador';
+    
+    // Verificar se admin já existe
+    const existingByEmail = getAuthUserByEmail(ADMIN_EMAIL);
+    const existingByUsername = getAuthUserByUsername(ADMIN_USERNAME);
+    
+    if (!existingByEmail && !existingByUsername) {
+      console.log('👤 Criando usuário admin padrão...');
+      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+      createAuthUser({
+        username: ADMIN_USERNAME,
+        email: ADMIN_EMAIL,
+        password_hash: passwordHash,
+        name: ADMIN_NAME,
+        role: 'admin',
+      });
+      console.log('✅ Usuário admin criado: admin@admin.com');
+    } else {
+      console.log('✅ Usuário admin já existe');
+    }
+  } catch (error) {
+    console.warn('⚠️  Não foi possível criar usuário admin automaticamente:', error.message);
+  }
+}
+
 try {
   await loadDatabase();
   initDatabase();
   console.log('✅ Banco de dados local inicializado');
+  
+  // Criar admin se não existir
+  await ensureAdminExists();
 } catch (error) {
   console.error('❌ Erro ao inicializar banco de dados:', error.message);
   process.exit(1);
