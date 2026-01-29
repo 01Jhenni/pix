@@ -267,8 +267,13 @@ export async function getOAuthToken(pixUserId) {
       new URLSearchParams({
         grant_type: 'client_credentials',
         scope: 'rec.write rec.read payloadlocationrec.write payloadlocationrec.read cobr.write cobr.read cob.write cob.read'
-        // Scopes necessários: rec (recorrência), cobr (cobrança com vencimento), cob (cobrança imediata)
+        // Escopos necessários conforme Guia Técnico API Pix Automático BB:
+        // - rec.write/read: Recorrências (Jornadas 1-4)
+        // - payloadlocationrec.write/read: Location/QR Code (Jornadas 2-4)
+        // - cob.write/read: Cobrança imediata (Jornada 3)
+        // - cobr.write/read: Cobrança com vencimento (Jornada 4)
         // Se der erro 403, verifique se todos estão habilitados no Portal do BB
+        // Ver ESCOPOS_OAUTH_BB.md para detalhes completos
       }),
       {
         headers: {
