@@ -80,10 +80,18 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-  console.log(`📱 Frontend disponível em http://localhost:${PORT}`);
-  console.log(`🔌 API disponível em http://localhost:${PORT}/api`);
-  console.log(`💚 Health check: http://localhost:${PORT}/health`);
+const HOST = process.env.HOST || '0.0.0.0'; // Escutar em todas as interfaces para aceitar conexões externas
+
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
+  console.log(`📱 Frontend disponível em http://${HOST}:${PORT}`);
+  console.log(`🔌 API disponível em http://${HOST}:${PORT}/api`);
+  console.log(`💚 Health check: http://${HOST}:${PORT}/health`);
+  
+  // Mostrar também URLs externas se HOST for 0.0.0.0
+  if (HOST === '0.0.0.0') {
+    const externalUrl = process.env.EXTERNAL_URL || `http://localhost:${PORT}`;
+    console.log(`🌐 Acesse externamente: ${externalUrl}`);
+  }
 });
 
