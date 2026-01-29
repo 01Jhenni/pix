@@ -299,14 +299,36 @@ export async function getOAuthToken(pixUserId) {
     console.error('Erro ao obter token OAuth:', {
       message: error.message,
       code: error.code,
-      response: error.response?.data,
       status: error.response?.status,
-      statusText: error.response?.statusText
+      statusText: error.response?.statusText,
+      contentType: error.response?.headers?.['content-type']
     });
     
     // Capturar mensagem de erro de forma mais completa
     let errorMsg = '';
-    if (error.response?.data) {
+    const statusCode = error.response?.status;
+    const contentType = error.response?.headers?.['content-type'] || '';
+    
+    // Se a resposta for HTML (página de erro do BB)
+    if (contentType.includes('text/html') || contentType.includes('text/plain')) {
+      const htmlResponse = typeof error.response?.data === 'string' 
+        ? error.response.data 
+        : String(error.response?.data || '');
+      
+      // Tentar extrair mensagem de erro do HTML
+      const htmlMatch = htmlResponse.match(/\[ERR[^\]]+\]/i) || 
+                        htmlResponse.match(/Acesso negado/i) ||
+                        htmlResponse.match(/Forbidden/i);
+      
+      if (htmlMatch) {
+        errorMsg = `Resposta HTML do servidor: ${htmlMatch[0]}`;
+      } else {
+        // Limitar tamanho do HTML para não poluir o log
+        const htmlPreview = htmlResponse.substring(0, 200).replace(/\s+/g, ' ');
+        errorMsg = `Servidor retornou HTML ao invés de JSON. Primeiros caracteres: ${htmlPreview}...`;
+      }
+    } else if (error.response?.data) {
+      // Resposta JSON normal
       if (typeof error.response.data === 'string') {
         errorMsg = error.response.data;
       } else if (error.response.data.error_description) {
@@ -461,14 +483,32 @@ export async function getOAuthToken(pixUserId) {
     }
     
     // Adicionar informações úteis para debug
-    if (error.response?.status === 401) {
-      finalErrorMsg += '. Verifique as credenciais (gw_app_key e basic_auth_base64) do usuário PIX.';
-    } else if (error.response?.status === 403) {
-      finalErrorMsg += '. Acesso negado. Verifique as permissões da aplicação no Banco do Brasil.';
-    } else if (error.response?.status === 404) {
-      finalErrorMsg += '. URL OAuth não encontrada. Verifique a URL configurada.';
+    if (statusCode === 401) {
+      finalErrorMsg += '\n\n💡 SOLUÇÃO: Verifique as credenciais (gw_app_key e basic_auth_base64) do usuário PIX.';
+      finalErrorMsg += '\n   - Confirme se basic_auth_base64 está no formato correto (Base64 de client_id:client_secret)';
+      finalErrorMsg += '\n   - Verifique se as credenciais não expiraram no Portal do BB';
+    } else if (statusCode === 403) {
+      finalErrorMsg += '\n\n💡 SOLUÇÃO: Acesso negado - Problema de PERMISSÕES (Scopes).';
+      finalErrorMsg += '\n   1. Acesse: https://developers.bb.com.br/';
+      finalErrorMsg += '\n   2. Vá em "Minhas Aplicações"';
+      finalErrorMsg += '\n   3. Encontre a aplicação com gw_app_key: ' + (user?.gw_app_key?.substring(0, 20) || 'N/A') + '...';
+      finalErrorMsg += '\n   4. Habilite TODOS os escopos necessários:';
+      finalErrorMsg += '\n      - rec.write, rec.read';
+      finalErrorMsg += '\n      - payloadlocationrec.write, payloadlocationrec.read';
+      finalErrorMsg += '\n      - cobr.write, cobr.read';
+      finalErrorMsg += '\n      - cob.write, cob.read';
+      finalErrorMsg += '\n   5. Salve e aguarde 5-10 minutos para propagação';
+      finalErrorMsg += '\n   6. Verifique se está usando o ambiente correto (sandbox vs produção)';
+      finalErrorMsg += '\n\n📚 Veja RESOLVER_PERMISSOES_BB.md e ESCOPOS_OAUTH_BB.md para mais detalhes.';
+    } else if (statusCode === 404) {
+      finalErrorMsg += '\n\n💡 SOLUÇÃO: URL OAuth não encontrada.';
+      finalErrorMsg += '\n   - Verifique se a URL está correta: https://oauth.bb.com.br/oauth/token';
+      finalErrorMsg += '\n   - Para sandbox: https://oauth.sandbox.bb.com.br/oauth/token';
     } else if (errorCode === 'ECONNREFUSED' || errorCode === 'ETIMEDOUT') {
-      finalErrorMsg += '. Não foi possível conectar ao servidor OAuth. Verifique a conectividade e a URL.';
+      finalErrorMsg += '\n\n💡 SOLUÇÃO: Não foi possível conectar ao servidor OAuth.';
+      finalErrorMsg += '\n   - Verifique a conectividade com o servidor do BB';
+      finalErrorMsg += '\n   - Verifique firewall/proxy';
+      finalErrorMsg += '\n   - Teste a URL manualmente: curl -v https://oauth.bb.com.br/oauth/token';
     }
     
     throw new Error(finalErrorMsg);
