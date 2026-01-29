@@ -1,31 +1,56 @@
 # Configuração Nginx para pix.masterclassic.com.br
 # Salve este arquivo em: /etc/nginx/sites-available/pix.masterclassic.com.br
 
-# Redirecionar HTTP para HTTPS
+# OPÇÃO 1: Configuração SEM SSL (para testar primeiro)
+# Use esta configuração se ainda não tiver certificados SSL
+
 server {
     listen 80;
     listen [::]:80;
     server_name pix.masterclassic.com.br;
-    
-    # Redirecionar tudo para HTTPS
-    return 301 https://$server_name$request_uri;
+
+    access_log /var/log/nginx/pix.masterclassic.com.br.access.log;
+    error_log /var/log/nginx/pix.masterclassic.com.br.error.log;
+    client_max_body_size 10M;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
 }
 
-# Configuração HTTPS
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name pix.masterclassic.com.br;
+# OPÇÃO 2: Configuração COM SSL (descomente quando tiver certificados)
+# Para usar SSL, comente o bloco acima e descomente este:
 
-    # Certificados SSL (Terminus geralmente gerencia isso automaticamente)
-    # Se o Terminus não gerenciar, descomente e configure:
-    # ssl_certificate /etc/ssl/certs/pix.masterclassic.com.br.crt;
-    # ssl_certificate_key /etc/ssl/private/pix.masterclassic.com.br.key;
-    
-    # Configurações SSL recomendadas
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
+# Redirecionar HTTP para HTTPS
+# server {
+#     listen 80;
+#     listen [::]:80;
+#     server_name pix.masterclassic.com.br;
+#     return 301 https://$server_name$request_uri;
+# }
+
+# Configuração HTTPS
+# server {
+#     listen 443 ssl http2;
+#     listen [::]:443 ssl http2;
+#     server_name pix.masterclassic.com.br;
+#
+#     # Certificados SSL - Configure os caminhos corretos
+#     ssl_certificate /etc/letsencrypt/live/pix.masterclassic.com.br/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/pix.masterclassic.com.br/privkey.pem;
+#     
+#     # Configurações SSL recomendadas
+#     ssl_protocols TLSv1.2 TLSv1.3;
+#     ssl_ciphers HIGH:!aNULL:!MD5;
+#     ssl_prefer_server_ciphers on;
 
     # Logs
     access_log /var/log/nginx/pix.masterclassic.com.br.access.log;
