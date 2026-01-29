@@ -1,6 +1,13 @@
 import express from 'express';
-import { getDatabase } from '../database/db-loader.js';
 import crypto from 'crypto';
+import {
+  getApiKeyByKey,
+  listApiKeys,
+  createApiKey,
+  updateApiKeyLastUsed,
+  deleteApiKey,
+} from '../database/sqlite-db.js';
+import { getPixUserById } from '../database/sqlite-db.js';
 
 const router = express.Router();
 
@@ -8,7 +15,10 @@ const router = express.Router();
  * Middleware para autenticação por API Key
  */
 export function authenticateApiKey(req, res, next) {
-  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '') || req.query.api_key;
+  const apiKey = req.headers['x-api-key'] 
+    || req.headers['X-API-Key']
+    || (req.headers['authorization'] || req.headers['Authorization'])?.replace(/^Bearer\s+/i, '')
+    || req.query.api_key;
   
   if (!apiKey) {
     return res.status(401).json({
@@ -18,10 +28,7 @@ export function authenticateApiKey(req, res, next) {
   }
 
   try {
-    const db = getDatabase();
-    const keyData = db.prepare(`
-      SELECT * FROM api_keys WHERE key = ? AND active = 1
-    `).get(apiKey);
+    const keyData = getApiKeyByKey(apiKey);
 
     if (!keyData) {
       return res.status(401).json({
@@ -31,9 +38,7 @@ export function authenticateApiKey(req, res, next) {
     }
 
     // Atualizar último uso
-    db.prepare(`
-      UPDATE api_keys SET last_used = ? WHERE id = ?
-    `).run(new Date().toISOString(), keyData.id);
+    updateApiKeyLastUsed(keyData.id);
 
     // Adicionar informações do usuário à requisição
     req.pixUserId = keyData.pix_user_id;
@@ -63,13 +68,14 @@ router.get('/', (req, res) => {
       });
     }
 
-    const db = getDatabase();
-    const keys = db.prepare(`
-      SELECT id, name, key, active, last_used, created_at
-      FROM api_keys
-      WHERE pix_user_id = ?
-      ORDER BY created_at DESC
-    `).all(userId);
+    const keys = listApiKeys(userId).map((k) => ({
+      id: k.id,
+      name: k.name,
+      key: k.key,
+      active: k.active,
+      last_used: k.last_used,
+      created_at: k.created_at,
+    }));
 
     res.json({
       success: true,
@@ -97,14 +103,9 @@ router.post('/', (req, res) => {
     }
 
     // Verificar se usuário existe
-    const db = getDatabase();
-    const userId = parseInt(pixUserId);
+    const user = getPixUserById(pixUserId);
     
-    const user = db.prepare(`
-      SELECT id FROM pix_users WHERE id = ? AND ativo = 1
-    `).get(userId);
-    
-    if (!user) {
+    if (!user || !user.ativo) {
       return res.status(404).json({
         success: false,
         error: 'Usuário PIX não encontrado ou inativo'
@@ -114,28 +115,11 @@ router.post('/', (req, res) => {
     // Gerar API key
     const apiKey = 'pk_' + crypto.randomBytes(32).toString('hex');
 
-    // Usar db.prepare() para inserir (sincroniza automaticamente)
-    const result = db.prepare(`
-      INSERT INTO api_keys (pix_user_id, key, name, active, created_at, updated_at)
-      VALUES (?, ?, ?, 1, ?, ?)
-    `).run(
-      parseInt(pixUserId),
-      apiKey,
-      name || `API Key ${new Date().toLocaleDateString('pt-BR')}`,
-      new Date().toISOString(),
-      new Date().toISOString()
-    );
-
-    const keyData = {
-      id: result.lastInsertRowid,
-      pix_user_id: parseInt(pixUserId),
-      key: apiKey,
+    const keyData = createApiKey({
+      pixUserId,
       name: name || `API Key ${new Date().toLocaleDateString('pt-BR')}`,
-      active: 1,
-      last_used: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
+      key: apiKey,
+    });
 
     res.json({
       success: true,
@@ -161,24 +145,15 @@ router.post('/', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
     
-    const keyData = db.prepare('SELECT * FROM api_keys WHERE id = ?').get(id);
+    const ok = deleteApiKey(id);
     
-    if (!keyData) {
+    if (!ok) {
       return res.status(404).json({
         success: false,
         error: 'API Key não encontrada'
       });
     }
-
-    // Desativar ao invés de deletar usando db.prepare()
-    db.prepare(`
-      UPDATE api_keys SET active = 0, updated_at = ? WHERE id = ?
-    `).run(
-      new Date().toISOString(),
-      parseInt(id)
-    );
 
     res.json({
       success: true,

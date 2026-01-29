@@ -1,32 +1,23 @@
-// Carregador de banco de dados - Supabase
-let dbFunctions = null;
+import * as sqliteDb from './sqlite-db.js';
+
+let initialized = false;
 
 export async function loadDatabase() {
-  try {
-    const dbModule = await import('./db-supabase.js');
-    console.log('✅ Usando Supabase');
-    dbFunctions = {
-      getDatabase: dbModule.getDatabase,
-      initDatabase: dbModule.initDatabase
-    };
-    return dbFunctions;
-  } catch (error) {
-    console.error('❌ Erro ao carregar Supabase:', error.message);
-    throw new Error('Supabase não está configurado corretamente. Verifique SUPABASE_URL e SUPABASE_KEY nas variáveis de ambiente.');
+  if (!initialized) {
+    console.log('ℹ️ Usando banco de dados SQLite local persistente (database/sqlite-db.js).');
+    console.log('   Os dados serão salvos em: data/pix.db');
+    initialized = true;
   }
+  return {
+    getDatabase: sqliteDb.getDatabase,
+    initDatabase: sqliteDb.initDatabase,
+  };
 }
 
 export function getDatabase() {
-  if (!dbFunctions) {
-    throw new Error('Banco de dados não foi inicializado. Execute loadDatabase() primeiro.');
-  }
-  return dbFunctions.getDatabase();
+  return sqliteDb.getDatabase();
 }
 
 export function initDatabase() {
-  if (!dbFunctions) {
-    throw new Error('Banco de dados não foi inicializado. Execute loadDatabase() primeiro.');
-  }
-  return dbFunctions.initDatabase();
+  return sqliteDb.initDatabase();
 }
-

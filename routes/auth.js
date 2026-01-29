@@ -1,8 +1,16 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { getDatabase } from '../database/db-loader.js';
-import crypto from 'crypto';
+import {
+  getAuthUserByUsername,
+  getAuthUserByEmail,
+  getAuthUserById,
+  createAuthUser,
+  updateAuthUserLastLogin,
+  createSession,
+  getSessionByToken,
+  deleteSession,
+} from '../database/sqlite-db.js';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'sua-chave-secreta-super-segura-aqui-mude-em-producao';
@@ -37,20 +45,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const db = getDatabase();
-    
-    // Buscar usuário por username
-    let user = db.prepare(`
-      SELECT * FROM auth_users 
-      WHERE username = ? AND active = 1
-    `).get(username);
-    
-    // Se não encontrou, buscar por email
+    // Buscar usuário por username ou email
+    let user = getAuthUserByUsername(username);
     if (!user) {
-      user = db.prepare(`
-        SELECT * FROM auth_users 
-        WHERE email = ? AND active = 1
-      `).get(username);
+      user = getAuthUserByEmail(username);
     }
 
     if (!user) {
@@ -75,15 +73,14 @@ router.post('/login', async (req, res) => {
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
 
     // Salvar sessão
-    db.prepare(`
-      INSERT INTO sessions (user_id, token, expires_at)
-      VALUES (?, ?, ?)
-    `).run(user.id, token, expiresAt.toISOString());
+    createSession({
+      user_id: user.id,
+      token,
+      expires_at: expiresAt.toISOString(),
+    });
 
     // Atualizar último login
-    db.prepare(`
-      UPDATE auth_users SET last_login = ? WHERE id = ?
-    `).run(new Date().toISOString(), user.id);
+    updateAuthUserLastLogin(user.id);
 
     res.json({
       success: true,
@@ -122,12 +119,8 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const db = getDatabase();
-    
     // Verificar se usuário já existe
-    const existing = db.prepare(`
-      SELECT id FROM auth_users WHERE username = ? OR email = ?
-    `).get(username, email);
+    const existing = getAuthUserByUsername(username) || getAuthUserByEmail(email);
 
     if (existing) {
       return res.status(400).json({
@@ -140,19 +133,22 @@ router.post('/register', async (req, res) => {
     const passwordHash = await hashPassword(password);
 
     // Criar usuário
-    const result = db.prepare(`
-      INSERT INTO auth_users (username, email, password_hash, name, role, active)
-      VALUES (?, ?, ?, ?, ?, 1)
-    `).run(username, email, passwordHash, name || username, role);
+    const user = createAuthUser({
+      username,
+      email,
+      password_hash: passwordHash,
+      name: name || username,
+      role,
+    });
 
     res.json({
       success: true,
       data: {
-        id: result.lastInsertRowid,
-        username,
-        email,
-        name: name || username,
-        role
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role
       }
     });
   } catch (error) {
@@ -181,13 +177,9 @@ router.get('/me', async (req, res) => {
 
     // Verificar token
     const decoded = jwt.verify(token, JWT_SECRET);
-    const db = getDatabase();
 
     // Verificar sessão
-    const session = db.prepare(`
-      SELECT * FROM sessions 
-      WHERE token = ? AND expires_at > ?
-    `).get(token, new Date().toISOString());
+    const session = getSessionByToken(token);
 
     if (!session) {
       return res.status(401).json({
@@ -197,10 +189,7 @@ router.get('/me', async (req, res) => {
     }
 
     // Buscar usuário
-    const user = db.prepare(`
-      SELECT id, username, email, name, role, active, last_login, created_at
-      FROM auth_users WHERE id = ?
-    `).get(decoded.userId);
+    const user = getAuthUserById(decoded.userId);
 
     if (!user || !user.active) {
       return res.status(401).json({
@@ -211,7 +200,16 @@ router.get('/me', async (req, res) => {
 
     res.json({
       success: true,
-      data: user
+      data: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        active: user.active,
+        last_login: user.last_login,
+        created_at: user.created_at,
+      }
     });
   } catch (error) {
     console.error('Erro ao verificar token:', error);
@@ -231,10 +229,7 @@ router.post('/logout', async (req, res) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
 
     if (token) {
-      const db = getDatabase();
-      db.prepare(`
-        DELETE FROM sessions WHERE token = ?
-      `).run(token);
+      deleteSession(token);
     }
 
     res.json({

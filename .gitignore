@@ -1,55 +1,77 @@
-# Dependencies
+# Dependências
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 package-lock.json
 
-# Database files
-pix_system.db
-pix_system.db-journal
-pix_system.json
-
-# Environment variables
+# Variáveis de ambiente
 .env
 .env.local
+.env.*.local
 .env.production
 
+# Certificados SSL (NUNCA commitar!)
+certificates/*.pem
+certificates/*.txt
+certificates/*.key
+certificates/*.crt
+!certificates/.gitkeep
+
 # Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
 
-# OS files
+# Sistema operacional
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
+.project
+.classpath
+.settings/
 
-# Certificados SSL (NUNCA commitar!)
-certificates/*.pem
-certificates/*.crt
-certificates/*.key
-certificates/*.p12
-certificates/*.pfx
-certificates/passphrase.txt
-!certificates/.gitkeep
-!certificates/README.md
-!certificates/*.md
-!certificates/INSTRUCOES.txt
-
-# React/Vite (removido, mas mantendo para limpeza)
+# Builds antigos (não usado mais)
 dist/
 build/
-.vite/
+*.tsbuildinfo
 
-# IDE
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-
-# Temporary files
+# Temporários
 tmp/
 temp/
 *.tmp
+.cache/
 
+# PM2
+.pm2/
+ecosystem.config.js.bak
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Banco de dados SQLite (manter local, não commitar)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+!data/.gitkeep
+
+# Misc
+*.bak
+*.backup
+*.old

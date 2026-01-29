@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getDatabase } from '../database/db-loader.js';
+import { getSessionByToken, getAuthUserById } from '../database/sqlite-db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sua-chave-secreta-super-segura-aqui-mude-em-producao';
 
@@ -16,13 +16,9 @@ export function authenticate(req, res, next) {
 
     // Verificar token
     const decoded = jwt.verify(token, JWT_SECRET);
-    const db = getDatabase();
 
     // Verificar sessão
-    const session = db.prepare(`
-      SELECT * FROM sessions 
-      WHERE token = ? AND expires_at > ?
-    `).get(token, new Date().toISOString());
+    const session = getSessionByToken(token);
 
     if (!session) {
       return res.status(401).json({
@@ -32,10 +28,7 @@ export function authenticate(req, res, next) {
     }
 
     // Buscar usuário
-    const user = db.prepare(`
-      SELECT id, username, email, name, role, active
-      FROM auth_users WHERE id = ? AND active = 1
-    `).get(decoded.userId);
+    const user = getAuthUserById(decoded.userId);
 
     if (!user) {
       return res.status(401).json({
@@ -45,7 +38,14 @@ export function authenticate(req, res, next) {
     }
 
     // Adicionar usuário ao request
-    req.user = user;
+    req.user = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      active: user.active,
+    };
     next();
   } catch (error) {
     console.error('Erro na autenticação:', error);

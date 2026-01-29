@@ -1,5 +1,12 @@
 import express from 'express';
-import { getDatabase } from '../database/db-loader.js';
+import {
+  listPixUsers,
+  getPixUserById,
+  getPixUserByCnpj,
+  createPixUser,
+  updatePixUser,
+  softDeletePixUser,
+} from '../database/sqlite-db.js';
 
 const router = express.Router();
 
@@ -9,14 +16,7 @@ const router = express.Router();
  */
 router.get('/', (req, res) => {
   try {
-    const db = getDatabase();
-    const users = db.prepare(`
-      SELECT 
-        id, cnpj, nome, chave_pix_recebedor, nome_recebedor,
-        cidade_recebedor, ativo, created_at, updated_at
-      FROM pix_users
-      ORDER BY created_at DESC
-    `).all();
+    const users = listPixUsers();
 
     res.json({
       success: true,
@@ -37,14 +37,7 @@ router.get('/', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-    const user = db.prepare(`
-      SELECT 
-        id, cnpj, nome, chave_pix_recebedor, nome_recebedor,
-        cidade_recebedor, ativo, created_at, updated_at
-      FROM pix_users
-      WHERE id = ?
-    `).get(id);
+    const user = getPixUserById(id);
 
     if (!user) {
       return res.status(404).json({ 
@@ -89,34 +82,25 @@ router.post('/', (req, res) => {
       });
     }
 
-    const db = getDatabase();
-
     // Verificar se CNPJ já existe
-    const existing = db.prepare('SELECT id FROM pix_users WHERE cnpj = ?').get(cnpj);
+    const existing = getPixUserByCnpj(cnpj);
     if (existing) {
       return res.status(400).json({ 
         error: 'CNPJ já cadastrado' 
       });
     }
 
-    // Inserir usuário
-    const result = db.prepare(`
-      INSERT INTO pix_users (
-        cnpj, nome, gw_app_key, basic_auth_base64, base_url, oauth_url,
-        chave_pix_recebedor, nome_recebedor, cidade_recebedor
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      cnpj, nome, gw_app_key, basic_auth_base64, base_url, oauth_url,
-      chave_pix_recebedor, nome_recebedor, cidade_recebedor
-    );
-
-    const newUser = db.prepare(`
-      SELECT 
-        id, cnpj, nome, chave_pix_recebedor, nome_recebedor,
-        cidade_recebedor, ativo, created_at, updated_at
-      FROM pix_users
-      WHERE id = ?
-    `).get(result.lastInsertRowid);
+    const newUser = createPixUser({
+      cnpj,
+      nome,
+      gw_app_key,
+      basic_auth_base64,
+      base_url,
+      oauth_url,
+      chave_pix_recebedor,
+      nome_recebedor,
+      cidade_recebedor,
+    });
 
     res.status(201).json({
       success: true,
@@ -150,10 +134,8 @@ router.put('/:id', (req, res) => {
       ativo
     } = req.body;
 
-    const db = getDatabase();
-
     // Verificar se usuário existe
-    const existing = db.prepare('SELECT id FROM pix_users WHERE id = ?').get(id);
+    const existing = getPixUserById(id);
     if (!existing) {
       return res.status(404).json({ 
         error: 'Usuário não encontrado' 
@@ -210,19 +192,7 @@ router.put('/:id', (req, res) => {
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
-    db.prepare(`
-      UPDATE pix_users 
-      SET ${updates.join(', ')}
-      WHERE id = ?
-    `).run(...values);
-
-    const updatedUser = db.prepare(`
-      SELECT 
-        id, cnpj, nome, chave_pix_recebedor, nome_recebedor,
-        cidade_recebedor, ativo, created_at, updated_at
-      FROM pix_users
-      WHERE id = ?
-    `).get(id);
+    const updatedUser = updatePixUser(id, Object.fromEntries(updates.map((u, idx) => [u.split(' = ')[0], values[idx]])));
 
     res.json({
       success: true,
@@ -244,11 +214,9 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
+    const ok = softDeletePixUser(id);
 
-    const result = db.prepare('UPDATE pix_users SET ativo = 0 WHERE id = ?').run(id);
-
-    if (result.changes === 0) {
+    if (!ok) {
       return res.status(404).json({ 
         error: 'Usuário não encontrado' 
       });

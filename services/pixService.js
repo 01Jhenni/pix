@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { getDatabase } from '../database/db-loader.js';
+import { getPixUserById, createTransaction, updateTransactionByTxid } from '../database/sqlite-db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,9 +18,39 @@ const tokenCache = new Map();
 
 // Função para carregar certificados SSL se existirem
 function loadSSLCertificates() {
+  // PRIORIDADE 1: Tentar ler de variáveis de ambiente (útil para Terminus/Cloud)
+  if (process.env.SSL_CERT && process.env.SSL_KEY) {
+    console.log('✅ Certificados SSL encontrados nas variáveis de ambiente!');
+    try {
+      const cert = process.env.SSL_CERT;
+      const key = process.env.SSL_KEY;
+      const ca = process.env.SSL_CA || undefined;
+      const passphrase = process.env.SSL_PASSPHRASE || undefined;
+
+      if (passphrase) {
+        console.log('   Usando passphrase para descriptografar certificados');
+      }
+
+      return {
+        cert,
+        key,
+        ca,
+        passphrase,
+        rejectUnauthorized: !!ca // Se tiver CA, valida; senão, não valida
+      };
+    } catch (error) {
+      console.error('⚠️  Erro ao processar certificados SSL das variáveis de ambiente:', error.message);
+      // Continuar para tentar arquivos locais
+    }
+  }
+
+  // PRIORIDADE 2: Tentar ler de arquivos locais
   const certsDir = path.join(__dirname, '..', 'certificates');
   const certPath = path.join(certsDir, 'cert.pem');
-  const keyPath = path.join(certsDir, 'key.pem');
+  // Aceitar tanto key.pem quanto chave.pem
+  const keyPath = fs.existsSync(path.join(certsDir, 'key.pem')) 
+    ? path.join(certsDir, 'key.pem')
+    : path.join(certsDir, 'chave.pem');
   const caPath = path.join(certsDir, 'ca.pem');
   const passphrasePath = path.join(certsDir, 'passphrase.txt');
 
@@ -30,7 +60,7 @@ function loadSSLCertificates() {
   const hasPassphrase = fs.existsSync(passphrasePath);
 
   if (hasCert && hasKey) {
-    console.log('✅ Certificados SSL encontrados! Usando certificados do cliente.');
+    console.log('✅ Certificados SSL encontrados em arquivos locais! Usando certificados do cliente.');
     try {
       const cert = fs.readFileSync(certPath, 'utf8');
       const key = fs.readFileSync(keyPath, 'utf8');
@@ -55,7 +85,8 @@ function loadSSLCertificates() {
   } else {
     console.log('⚠️  Certificados SSL não encontrados. Usando modo sem certificado (pode falhar).');
     console.log(`   Procurando em: ${certsDir}`);
-    console.log('   Arquivos esperados: cert.pem, key.pem, ca.pem (opcional), passphrase.txt (opcional)');
+    console.log('   Arquivos esperados: cert.pem, key.pem (ou chave.pem), ca.pem (opcional), passphrase.txt (opcional)');
+    console.log('   OU configure variáveis de ambiente: SSL_CERT, SSL_KEY, SSL_CA (opcional), SSL_PASSPHRASE (opcional)');
     console.log('');
     console.log('💡 DICA: Se os campos Certificate/Private Key estiverem vazios no n8n:');
     console.log('   1. Tente a credencial "SSL Certificates account 3"');
@@ -105,6 +136,71 @@ function createHttpsAgent() {
 // Agente HTTPS reutilizável
 const httpsAgent = createHttpsAgent();
 
+// Função auxiliar para tentar múltiplas configurações SSL em caso de erro
+async function tryWithMultipleSSLConfigs(requestFn) {
+  const sslConfigs = [
+    // 1. Sem certificado do cliente, apenas desabilitando validação
+    {
+      rejectUnauthorized: false,
+      requestCert: false,
+      secureProtocol: 'TLSv1_2_method'
+    },
+    // 2. Sem certificado, TLS 1.3
+    {
+      rejectUnauthorized: false,
+      requestCert: false,
+      secureProtocol: 'TLS_method'
+    },
+    // 3. Sem certificado, TLS 1.2 com ciphers específicos
+    {
+      rejectUnauthorized: false,
+      requestCert: false,
+      secureProtocol: 'TLSv1_2_method',
+      ciphers: 'DEFAULT:@SECLEVEL=1'
+    },
+    // 4. Se tiver certificados, tentar sem passphrase
+    ...(sslCerts ? [{
+      cert: sslCerts.cert,
+      key: sslCerts.key,
+      rejectUnauthorized: false,
+      requestCert: true,
+      secureProtocol: 'TLSv1_2_method'
+    }] : []),
+    // 5. Se tiver certificados, tentar com diferentes protocolos
+    ...(sslCerts ? [{
+      cert: sslCerts.cert,
+      key: sslCerts.key,
+      rejectUnauthorized: false,
+      requestCert: true,
+      secureProtocol: 'TLS_method'
+    }] : [])
+  ];
+
+  for (let i = 0; i < sslConfigs.length; i++) {
+    try {
+      console.log(`Tentativa SSL ${i + 1}/${sslConfigs.length}...`);
+      const result = await requestFn(new https.Agent(sslConfigs[i]));
+      console.log(`✅ Sucesso na tentativa ${i + 1}!`);
+      return result;
+    } catch (retryError) {
+      const retryMsg = retryError.message || '';
+      // Se não for erro SSL, propagar o erro
+      if (!retryMsg.includes('SSL') && !retryMsg.includes('certificate') && !retryMsg.includes('EPROTO') && !retryMsg.includes('bad certificate')) {
+        throw retryError;
+      }
+      // Se for a última tentativa, lançar erro
+      if (i === sslConfigs.length - 1) {
+        throw new Error(
+          `Erro de certificado SSL após ${sslConfigs.length} tentativas. ` +
+          `A API do Banco do Brasil requer certificados SSL válidos do cliente. ` +
+          `Verifique se os certificados estão corretos em: certificates/cert.pem e certificates/key.pem. ` +
+          `Detalhes: ${retryError.message}`
+        );
+      }
+    }
+  }
+}
+
 // Configurar axios para usar o agente HTTPS globalmente
 axios.defaults.httpsAgent = httpsAgent;
 axios.defaults.timeout = 30000;
@@ -136,8 +232,7 @@ axios.interceptors.request.use((config) => {
  * Obtém token OAuth para um usuário PIX
  */
 export async function getOAuthToken(pixUserId) {
-  const db = getDatabase();
-  const user = db.prepare('SELECT * FROM pix_users WHERE id = ? AND ativo = 1').get(pixUserId);
+  const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado ou inativo');
@@ -309,8 +404,7 @@ export function generateTxid() {
  * Cria cobrança imediata
  */
 export async function criarCobranca(pixUserId, txid, valor, chavePix, solicitacaoPagador = 'Primeira parcela - Pix Automatico') {
-  const db = getDatabase();
-  const user = db.prepare('SELECT * FROM pix_users WHERE id = ? AND ativo = 1').get(pixUserId);
+  const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
@@ -348,11 +442,12 @@ export async function criarCobranca(pixUserId, txid, valor, chavePix, solicitaca
     const errorMsg = error.response?.data?.mensagem || error.response?.data?.message || error.message;
     const errorCode = error.code || '';
     
-    // Melhorar mensagem de erro de SSL e tentar novamente
+    // Melhorar mensagem de erro de SSL e tentar múltiplas configurações
     if (errorMsg.includes('SSL') || errorMsg.includes('certificate') || errorMsg.includes('bad certificate') || 
-        errorCode.includes('CERT') || errorCode.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE')) {
-      console.error('Erro SSL detectado. Tentando novamente...');
-      try {
+        errorMsg.includes('EPROTO') || errorCode.includes('CERT') || errorCode.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE')) {
+      console.error('Erro SSL detectado. Tentando múltiplas configurações...');
+      
+      return await tryWithMultipleSSLConfigs(async (agent) => {
         const retryResponse = await axios.put(
           `${baseUrl}/cob/${txid}?gw-dev-app-key=${encodeURIComponent(user.gw_app_key)}`,
           {
@@ -366,17 +461,12 @@ export async function criarCobranca(pixUserId, txid, valor, chavePix, solicitaca
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
-            httpsAgent: new https.Agent({
-              rejectUnauthorized: false,
-              secureProtocol: 'TLSv1_2_method'
-            }),
+            httpsAgent: agent,
             timeout: 30000
           }
         );
         return retryResponse.data;
-      } catch (retryError) {
-        throw new Error(`Erro de certificado SSL. Verifique se as credenciais estão corretas. Detalhes: ${retryError.message}`);
-      }
+      });
     }
     throw new Error(`Falha ao criar cobrança: ${errorMsg}`);
   }
@@ -386,8 +476,7 @@ export async function criarCobranca(pixUserId, txid, valor, chavePix, solicitaca
  * Cria LOCREC
  */
 export async function criarLocrec(pixUserId) {
-  const db = getDatabase();
-  const user = db.prepare('SELECT * FROM pix_users WHERE id = ? AND ativo = 1').get(pixUserId);
+  const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
@@ -413,7 +502,32 @@ export async function criarLocrec(pixUserId) {
     return response.data;
   } catch (error) {
     console.error('Erro ao criar LOCREC:', error.response?.data || error.message);
-    throw new Error(`Falha ao criar LOCREC: ${error.response?.data?.mensagem || error.message}`);
+    const errorMsg = error.response?.data?.mensagem || error.response?.data?.message || error.message;
+    const errorCode = error.code || '';
+    
+    // Tentar múltiplas configurações SSL se for erro de certificado
+    if (errorMsg.includes('SSL') || errorMsg.includes('certificate') || errorMsg.includes('bad certificate') || 
+        errorMsg.includes('EPROTO') || errorCode.includes('CERT') || errorCode.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE')) {
+      console.error('Erro SSL detectado ao criar LOCREC. Tentando múltiplas configurações...');
+      
+      return await tryWithMultipleSSLConfigs(async (agent) => {
+        const retryResponse = await axios.post(
+          `${baseUrl}/locrec?gw-dev-app-key=${encodeURIComponent(user.gw_app_key)}`,
+          {},
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            httpsAgent: agent,
+            timeout: 30000
+          }
+        );
+        return retryResponse.data;
+      });
+    }
+    
+    throw new Error(`Falha ao criar LOCREC: ${errorMsg}`);
   }
 }
 
@@ -421,8 +535,7 @@ export async function criarLocrec(pixUserId) {
  * Cria recorrência
  */
 export async function criarRecorrencia(pixUserId, dados) {
-  const db = getDatabase();
-  const user = db.prepare('SELECT * FROM pix_users WHERE id = ? AND ativo = 1').get(pixUserId);
+  const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
@@ -473,7 +586,32 @@ export async function criarRecorrencia(pixUserId, dados) {
     return response.data;
   } catch (error) {
     console.error('Erro ao criar recorrência:', error.response?.data || error.message);
-    throw new Error(`Falha ao criar recorrência: ${error.response?.data?.mensagem || error.message}`);
+    const errorMsg = error.response?.data?.mensagem || error.response?.data?.message || error.message;
+    const errorCode = error.code || '';
+    
+    // Tentar múltiplas configurações SSL se for erro de certificado
+    if (errorMsg.includes('SSL') || errorMsg.includes('certificate') || errorMsg.includes('bad certificate') || 
+        errorMsg.includes('EPROTO') || errorCode.includes('CERT') || errorCode.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE')) {
+      console.error('Erro SSL detectado ao criar recorrência. Tentando múltiplas configurações...');
+      
+      return await tryWithMultipleSSLConfigs(async (agent) => {
+        const retryResponse = await axios.post(
+          `${baseUrl}/rec?gw-dev-app-key=${encodeURIComponent(user.gw_app_key)}`,
+          body,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            httpsAgent: agent,
+            timeout: 30000
+          }
+        );
+        return retryResponse.data;
+      });
+    }
+    
+    throw new Error(`Falha ao criar recorrência: ${errorMsg}`);
   }
 }
 
@@ -481,8 +619,7 @@ export async function criarRecorrencia(pixUserId, dados) {
  * Consulta recorrência
  */
 export async function consultarRecorrencia(pixUserId, idRec, txid) {
-  const db = getDatabase();
-  const user = db.prepare('SELECT * FROM pix_users WHERE id = ? AND ativo = 1').get(pixUserId);
+  const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
@@ -624,10 +761,8 @@ function sleep(seconds) {
  * Processo completo Jornada 3
  */
 export async function processarJornada3(pixUserId, dados) {
-  const db = getDatabase();
-  
   // Usar dados do usuário se não fornecidos
-  const user = db.prepare('SELECT * FROM pix_users WHERE id = ? AND ativo = 1').get(pixUserId);
+  const user = getPixUserById(pixUserId);
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
   }
@@ -662,18 +797,21 @@ export async function processarJornada3(pixUserId, dados) {
 
   const idRec = recorrencia.idRec;
 
-  // 5. Salvar transação inicial
-  const transactionId = db.prepare(`
-    INSERT INTO transactions (
-      pix_user_id, txid, id_rec, contrato, cpf_devedor, nome_devedor,
-      valor_primeiro_pagamento, valor_recorrencia, data_inicial,
-      periodicidade, politica_retentativa, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    pixUserId, txid, idRec, dados.contrato, dados.cpfDevedor, dados.nomeDevedor,
-    dados.valorPrimeiroPagamento, dados.valorRec, dados.dataInicial,
-    dados.periodicidade, dados.politicaRetentativa, 'PENDENTE'
-  ).lastInsertRowid;
+  // 5. Salvar transação inicial no banco local
+  const transactionId = createTransaction({
+    pix_user_id: pixUserId,
+    txid,
+    id_rec: idRec,
+    contrato: dados.contrato,
+    cpf_devedor: dados.cpfDevedor,
+    nome_devedor: dados.nomeDevedor,
+    valor_primeiro_pagamento: dados.valorPrimeiroPagamento,
+    valor_recorrencia: dados.valorRec,
+    data_inicial: dados.dataInicial,
+    periodicidade: dados.periodicidade,
+    politica_retentativa: dados.politicaRetentativa,
+    status: 'PENDENTE',
+  });
 
   // 6. Polling para obter QR Code
   console.log(`Iniciando polling para obter QR Code (idRec: ${idRec}, txid: ${txid})...`);
@@ -689,20 +827,15 @@ export async function processarJornada3(pixUserId, dados) {
     throw new Error('Código PIX copia e cola não foi obtido após polling');
   }
 
-  // 7. Atualizar transação com QR Code
-  db.prepare(`
-    UPDATE transactions 
-    SET pix_copia_e_cola = ?, status = ?, jornada = ?, metadata = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(
-    resultado.dadosQR.pixCopiaECola,
-    resultado.status || 'ATIVA',
-    resultado.dadosQR.jornada || 'JORNADA_3',
-    JSON.stringify(resultado._metadata),
-    transactionId
-  );
+  // 7. Atualizar transação com QR Code no banco local
+  updateTransactionByTxid(txid, {
+    pix_copia_e_cola: resultado.dadosQR.pixCopiaECola,
+    status: resultado.status || 'ATIVA',
+    jornada: resultado.dadosQR.jornada || 'JORNADA_3',
+    metadata: JSON.stringify(resultado._metadata),
+  });
 
-  console.log('✅ Transação atualizada com QR Code');
+  console.log('✅ Transação atualizada com QR Code (banco local)');
 
   return {
     ...resultado,

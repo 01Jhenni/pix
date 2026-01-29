@@ -1,104 +1,55 @@
-# PIX Jornada 3 - Sistema Completo
+# PIX - Sistema de Recorrências PIX
 
-Sistema completo de gerenciamento de recorrências PIX Jornada 3 com interface moderna e integração Supabase.
+Sistema completo para gerenciamento de recorrências PIX do Banco do Brasil.
 
-## 🚀 Tecnologias
+## 🌐 Acesso
 
-- **Backend:** Node.js + Express
-- **Frontend:** React + Vite + Tailwind CSS
-- **Banco de Dados:** Supabase (PostgreSQL)
-- **Autenticação:** JWT
+**Produção:** https://pix.masterclassic.com.br
 
-## 📋 Pré-requisitos
+**API Externa:** https://pix.masterclassic.com.br/api/v1/pix
 
-- Node.js 18+
-- Conta Supabase
-- Certificados SSL do Banco do Brasil
+## 📦 Instalação
 
-## ⚙️ Instalação
-
-1. Clone o repositório
-2. Instale as dependências:
 ```bash
 npm install
 ```
 
-3. Configure o Supabase:
-   - Copie o arquivo `.env.example` para `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edite o arquivo `.env` e configure suas credenciais do Supabase
-   - **IMPORTANTE:** Execute o SQL em `database/supabase-schema.sql` no Supabase SQL Editor:
-     ```bash
-     # 1. Acesse https://supabase.com/dashboard
-     # 2. Selecione seu projeto
-     # 3. Vá em "SQL Editor"
-     # 4. Copie e cole o conteúdo de database/supabase-schema.sql
-     # 5. Execute o SQL
-     ```
-   - Ou execute o script de verificação:
-     ```bash
-     npm run setup:supabase
-     ```
+## 🚀 Executar
 
-4. Configure os certificados SSL:
-   - Coloque `cert.pem` e `key.pem` na pasta `certificates/`
-
-5. Build do frontend:
-```bash
-npm run build
-```
-
-6. Inicie o servidor:
 ```bash
 npm start
 ```
 
-## 🔐 Login Padrão
+O sistema estará disponível em `http://localhost:3000`
 
-- **Username:** admin
-- **Senha:** admin123
+## 🔐 Certificados SSL
 
-**⚠️ IMPORTANTE:** Altere a senha após o primeiro login!
+Coloque `cert.pem` e `chave.pem` (ou `key.pem`) na pasta `certificates/` ou configure variáveis de ambiente:
+- `SSL_CERT`
+- `SSL_KEY`
+- `SSL_CA` (opcional)
+- `SSL_PASSPHRASE` (opcional)
 
-## 📡 API Pública
+## 📡 API
 
-A API pública está disponível em `/api/v1/pix` e requer API Key:
+### API Interna (Painel Admin)
+- `POST /api/pix/jornada3` - Criar recorrência PIX
+- `GET /api/pix/qrcode/:txid` - Obter QR Code
+- `GET /api/users` - Listar usuários
+- `POST /api/users` - Criar usuário
+- `GET /health` - Health check
 
-```bash
-curl -X POST http://localhost:3000/api/v1/pix/jornada3 \
-  -H "X-API-Key: sua-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{ ... }'
-```
+### API Externa (Integração)
+- `POST /api/v1/pix/jornada3` - Criar recorrência PIX (requer API Key)
+- `GET /api/v1/pix/qrcode/:txid` - Obter QR Code (requer API Key)
+- `GET /api/v1/pix/transactions` - Listar transações (requer API Key)
+- `GET /api/v1/pix/recorrencia/:idRec` - Consultar recorrência (requer API Key)
 
-## 🗄️ Estrutura do Banco de Dados
+Veja `API_EXTERNA.md` para documentação completa da API externa.
 
-- `auth_users` - Usuários do sistema
-- `sessions` - Sessões de autenticação
-- `pix_users` - Usuários PIX (credenciais BB)
-- `transactions` - Transações/Recorrências
-- `user_profiles` - Perfis white label
-- `api_keys` - Chaves de API
+## 📚 Documentação
 
-## 📁 Estrutura do Projeto
-
-```
-├── src/              # Frontend React
-├── routes/           # Rotas da API
-├── services/         # Serviços (PIX)
-├── database/         # Integração com banco
-├── middleware/       # Middlewares (auth)
-└── certificates/     # Certificados SSL
-```
-
-## 🔧 Scripts
-
-- `npm start` - Inicia o servidor
-- `npm run dev` - Modo desenvolvimento
-- `npm run build` - Build do frontend
-
-## 📝 Licença
-
-ISC
+- `API_EXTERNA.md` - Documentação completa da API externa
+- `DEPLOY_TERMINUS.md` - Guia de deploy no Terminus
+- `TERMINUS_QUICK_START.md` - Deploy rápido no Terminus
+- `DATABASE.md` - Informações sobre o banco de dados

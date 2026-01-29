@@ -2,91 +2,3036 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PIX Jornada 3 - Sistema Completo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="Sistema completo para gerenciamento de recorrências PIX do Banco do Brasil" />
+    <meta name="theme-color" content="#ef4444" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PIX" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon-192.svg" />
+    <title>PIX - Painel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
+      :root {
+        --bg: #020617;
+        --bg-alt: #020617;
+        --card: #0f172a;
+        --card-alt: #020617;
+        --border: #1e293b;
+        --accent: #ef4444;
+        --accent-soft: rgba(248, 113, 113, 0.2);
+        --accent-soft-strong: rgba(248, 113, 113, 0.35);
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --radius-lg: 16px;
+        --radius-md: 10px;
+        --shadow-soft: 0 24px 60px rgba(15, 23, 42, 0.85);
+      }
+
+      *,
+      *::before,
+      *::after {
         box-sizing: border-box;
       }
+
+      html,
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 0;
+        height: 100%;
+      }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(248, 113, 113, 0.16) 0, transparent 55%),
+          radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.12) 0, transparent 55%),
+          radial-gradient(circle at top right, rgba(14, 165, 233, 0.18) 0, transparent 45%),
+          linear-gradient(135deg, #020617 0%, #020617 55%, #020617 100%);
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .app-shell {
         min-height: 100vh;
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .app-container {
+        width: 100%;
+        max-width: 1180px;
+        background: radial-gradient(circle at top left, rgba(248, 113, 113, 0.08), transparent 55%),
+          radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.08), transparent 60%),
+          radial-gradient(circle at top right, rgba(94, 234, 212, 0.06), transparent 50%),
+          #020617;
+        border-radius: 28px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow:
+          0 40px 120px rgba(15, 23, 42, 0.95),
+          0 0 0 1px rgba(15, 23, 42, 0.8);
+        display: flex;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        width: 260px;
+        background: radial-gradient(circle at top, rgba(248, 113, 113, 0.16), transparent 55%),
+          linear-gradient(180deg, #020617 0%, #020617 52%, #020617 100%);
+        border-right: 1px solid rgba(148, 163, 184, 0.22);
+        padding: 20px 18px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        z-index: 100;
+        pointer-events: auto;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .logo-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background:
+          radial-gradient(circle at 20% 20%, #fee2e2 0, transparent 55%),
+          radial-gradient(circle at 80% 80%, #fecaca 0, transparent 55%),
+          conic-gradient(from 160deg, #ef4444, #fb7185, #facc15, #fb923c, #ef4444);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
+        box-shadow:
+          0 0 0 1px rgba(248, 250, 252, 0.7),
+          0 18px 35px rgba(248, 113, 113, 0.6);
       }
-      .container {
-        text-align: center;
-        max-width: 600px;
-        padding: 2rem;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+      .logo-icon span {
+        font-size: 18px;
+        font-weight: 800;
+        color: #0b1120;
       }
-      h1 {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
+
+      .logo-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
       }
-      p {
-        font-size: 1.1rem;
-        margin-bottom: 1.5rem;
-        opacity: 0.9;
+
+      .logo-title {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
       }
+
+      .logo-subtitle {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: rgba(148, 163, 184, 0.9);
+      }
+
+      .nav-section-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: rgba(148, 163, 184, 0.9);
+        margin: 12px 4px 8px;
+      }
+
+      .nav-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+
+      .nav-item {
+        margin-bottom: 4px;
+      }
+
+      .nav-link {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 11px;
+        border-radius: 999px;
+        cursor: pointer !important;
+        font-size: 13px;
+        text-align: left;
+        transition: all 0.17s ease-out;
+        position: relative;
+        z-index: 101 !important;
+        pointer-events: auto !important;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+      
+      .nav-link * {
+        pointer-events: none;
+      }
+      
+      .nav-item {
+        position: relative;
+        z-index: 100;
+        pointer-events: auto;
+      }
+      
+      .nav-list {
+        position: relative;
+        z-index: 100;
+        pointer-events: auto;
+      }
+
+      .nav-link:hover {
+        background: rgba(15, 23, 42, 0.7);
+        color: var(--text);
+      }
+
+      .nav-link.active {
+        background: radial-gradient(circle at top left, rgba(248, 113, 113, 0.4), transparent 55%),
+          linear-gradient(90deg, rgba(248, 113, 113, 0.35), rgba(239, 68, 68, 0.75));
+        color: #fef2f2;
+        box-shadow:
+          0 0 0 1px rgba(254, 242, 242, 0.15),
+          0 12px 26px rgba(248, 113, 113, 0.6);
+      }
+
+      .nav-badge {
+        margin-left: auto;
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(248, 250, 252, 0.35);
+        background: rgba(15, 23, 42, 0.7);
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        padding-top: 16px;
+        border-top: 1px solid rgba(30, 64, 175, 0.6);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .user-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(55, 65, 81, 0.9);
+      }
+
+      .user-avatar {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: radial-gradient(circle at 30% 20%, #fee2e2 0, transparent 55%),
+          radial-gradient(circle at 80% 80%, #fecaca 0, transparent 55%),
+          linear-gradient(135deg, #f97316, #ef4444);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .user-info {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .user-name {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .user-role {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .logout-btn {
+        border: 0;
+        border-radius: 999px;
+        padding: 7px 12px;
+        font-size: 11px;
+        cursor: pointer;
+        background: rgba(15, 23, 42, 0.9);
+        color: rgba(248, 113, 113, 0.93);
+        border: 1px solid rgba(248, 113, 113, 0.5);
+        transition: all 0.17s ease-out;
+      }
+
+      .logout-btn:hover {
+        background: rgba(248, 113, 113, 0.16);
+        color: #fecaca;
+      }
+
+      .main {
+        flex: 1;
+        padding: 20px 22px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .topbar-title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .topbar-title h1 {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+      }
+
+      .topbar-title span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .env-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.6);
+      }
+
+      .env-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.25);
+      }
+
+      .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .card {
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(30, 64, 175, 0.5);
+        background:
+          radial-gradient(circle at top left, rgba(30, 64, 175, 0.55), transparent 60%),
+          linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.98));
+        padding: 18px 18px 16px;
+        box-shadow:
+          0 20px 50px rgba(15, 23, 42, 0.9),
+          0 0 0 1px rgba(15, 23, 42, 0.9);
+      }
+
+      .card-plain {
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(15, 23, 42, 0.95);
+        background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.35), transparent 60%),
+          linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.98));
+        padding: 18px 18px 16px;
+        box-shadow:
+          0 18px 40px rgba(15, 23, 42, 0.9),
+          0 0 0 1px rgba(15, 23, 42, 0.9);
+      }
+
+      .grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .stat-card-title {
+        font-size: 12px;
+        color: rgba(226, 232, 240, 0.8);
+        margin-bottom: 10px;
+      }
+
+      .stat-card-value {
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      .stat-card-sub {
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+      }
+
+      .pill-success {
+        background: rgba(22, 163, 74, 0.1);
+        border-color: rgba(34, 197, 94, 0.5);
+        color: #bbf7d0;
+      }
+
+      .pill-danger {
+        background: rgba(248, 113, 113, 0.1);
+        border-color: rgba(248, 113, 113, 0.75);
+        color: #fecaca;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #22c55e;
+      }
+
+      .status-dot-danger {
+        background: #f97316;
+      }
+
+      .status-dot-muted {
+        background: rgba(148, 163, 184, 0.9);
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .form-label {
+        font-size: 12px;
+        color: rgba(203, 213, 225, 0.95);
+      }
+
+      .form-input,
+      .form-select,
+      .form-textarea {
+        border-radius: 10px;
+        border: 1px solid rgba(30, 64, 175, 0.6);
+        background: rgba(15, 23, 42, 0.98);
+        padding: 8px 10px;
+        color: var(--text);
+        font-size: 13px;
+        outline: none;
+        transition: all 0.14s ease-out;
+      }
+
+      .form-input:focus,
+      .form-select:focus,
+      .form-textarea:focus {
+        border-color: rgba(248, 113, 113, 0.9);
+        box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.5);
+      }
+
+      .form-textarea {
+        resize: vertical;
+        min-height: 70px;
+      }
+
+      .btn-row {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .btn {
+        border-radius: 999px;
+        border: 0;
+        padding: 8px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(15, 23, 42, 0.98);
+        color: var(--text);
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        transition: all 0.16s ease-out;
+      }
+
+      .btn:hover {
+        background: rgba(15, 23, 42, 0.9);
+        transform: translateY(-0.5px);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #ef4444, #f97316);
+        color: #fef2f2;
+        border-color: transparent;
+        box-shadow:
+          0 10px 26px rgba(248, 113, 113, 0.75),
+          0 0 0 1px rgba(248, 113, 113, 0.7);
+      }
+
+      .btn-primary:hover {
+        filter: brightness(1.05);
+        transform: translateY(-1px);
+      }
+
+      .btn-ghost {
+        background: rgba(15, 23, 42, 0.96);
+        border-color: rgba(148, 163, 184, 0.5);
+      }
+
+      .btn-small {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      .btn-danger {
+        background: rgba(248, 113, 113, 0.08);
+        color: #fecaca;
+        border-color: rgba(248, 113, 113, 0.7);
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .btn-danger:hover {
+        background: rgba(248, 113, 113, 0.18);
+      }
+
+      .table-wrapper {
+        border-radius: 14px;
+        border: 1px solid rgba(15, 23, 42, 0.95);
+        background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.4), transparent 55%),
+          linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(2, 6, 23, 0.98));
+        overflow: hidden;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      thead {
+        background: rgba(15, 23, 42, 0.98);
+      }
+
+      th,
+      td {
+        padding: 9px 10px;
+        text-align: left;
+      }
+
+      th {
+        font-weight: 500;
+        color: rgba(148, 163, 184, 0.95);
+        border-bottom: 1px solid rgba(30, 64, 175, 0.8);
+      }
+
+      tbody tr:nth-child(even) {
+        background: rgba(15, 23, 42, 0.98);
+      }
+
+      tbody tr:nth-child(odd) {
+        background: rgba(15, 23, 42, 0.94);
+      }
+
+      tbody tr:hover {
+        background: rgba(30, 64, 175, 0.75);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        border: 1px solid rgba(30, 64, 175, 0.9);
+        background: rgba(15, 23, 42, 0.96);
+      }
+
+      .badge-success {
+        border-color: rgba(22, 163, 74, 0.8);
+        background: rgba(22, 163, 74, 0.15);
+        color: #bbf7d0;
+      }
+
+      .badge-warn {
+        border-color: rgba(250, 204, 21, 0.75);
+        background: rgba(250, 204, 21, 0.13);
+        color: #fef9c3;
+      }
+
+      .badge-soft {
+        border-color: rgba(148, 163, 184, 0.7);
+        background: rgba(15, 23, 42, 0.95);
+        color: rgba(148, 163, 184, 0.95);
+      }
+
       .code {
-        background: rgba(0, 0, 0, 0.3);
-        padding: 1rem;
-        border-radius: 8px;
-        font-family: 'Courier New', monospace;
-        margin: 1rem 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 7px;
+        background: rgba(15, 23, 42, 0.98);
+        border: 1px solid rgba(30, 64, 175, 0.8);
+        color: rgba(248, 250, 252, 0.97);
         word-break: break-all;
       }
-      .button {
-        display: inline-block;
-        padding: 12px 24px;
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 8px;
-        color: white;
-        text-decoration: none;
-        margin: 0.5rem;
-        transition: all 0.3s;
+
+      .code-soft {
+        background: rgba(15, 23, 42, 0.96);
+        border-color: rgba(51, 65, 85, 0.9);
+        color: rgba(148, 163, 184, 0.98);
       }
-      .button:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-2px);
+
+      .qr-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
       }
-      .warning {
-        background: rgba(255, 193, 7, 0.2);
-        border-left: 4px solid #ffc107;
-        padding: 1rem;
-        margin: 1rem 0;
+
+      .qr-image {
+        max-width: 260px;
+        border-radius: 18px;
+        border: 2px solid rgba(248, 113, 113, 0.8);
+        background: rgba(15, 23, 42, 0.98);
+        padding: 10px;
+        box-shadow:
+          0 18px 44px rgba(248, 113, 113, 0.7),
+          0 0 0 1px rgba(15, 23, 42, 0.95);
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .toast {
+        position: fixed;
+        right: 26px;
+        bottom: 22px;
+        min-width: 260px;
+        max-width: 380px;
+        padding: 12px 13px;
+        border-radius: 16px;
+        border: 1px solid rgba(15, 23, 42, 0.9);
+        background: radial-gradient(circle at top left, rgba(30, 64, 175, 0.45), transparent 55%),
+          linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.99));
+        color: var(--text);
+        box-shadow:
+          0 24px 80px rgba(15, 23, 42, 0.98),
+          0 0 0 1px rgba(15, 23, 42, 0.95);
+        display: none;
+        z-index: 40;
+      }
+
+      .toast.visible {
+        display: block;
+      }
+
+      .toast-title {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .toast-message {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .toast-success {
+        border-color: rgba(22, 163, 74, 0.8);
+      }
+
+      .toast-error {
+        border-color: rgba(248, 113, 113, 0.85);
+      }
+
+      .toast-warn {
+        border-color: rgba(250, 204, 21, 0.85);
+      }
+
+      .section {
+        display: none;
+      }
+
+      .section.active {
+        display: block;
+      }
+
+      .login-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(circle at top left, rgba(248, 113, 113, 0.18), transparent 55%),
+          radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.18), transparent 60%),
+          rgba(15, 23, 42, 0.97);
+        z-index: 50;
+      }
+
+      .login-card {
+        width: 100%;
+        max-width: 420px;
+        background:
+          radial-gradient(circle at top left, rgba(248, 113, 113, 0.16), transparent 60%),
+          radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.12), transparent 55%),
+          #020617;
+        border-radius: 24px;
+        padding: 22px 22px 20px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow:
+          0 30px 90px rgba(15, 23, 42, 0.98),
+          0 0 0 1px rgba(15, 23, 42, 0.9);
+      }
+
+      .login-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      .login-title-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .login-title {
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .login-subtitle {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .login-badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        font-size: 11px;
+        color: rgba(226, 232, 240, 0.96);
+        background: rgba(15, 23, 42, 0.96);
+      }
+
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .login-footer {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .muted-link {
+        color: rgba(248, 113, 113, 0.9);
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 960px) {
+        .app-shell {
+          padding: 10px;
+        }
+
+        .app-container {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          flex-direction: row;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 14px;
+        }
+
+        .sidebar-footer {
+          display: none;
+        }
+
+        .main {
+          padding: 14px 14px 16px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .grid-3,
+        .grid-2,
+        .form-row {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .sidebar {
+          flex-wrap: wrap;
+        }
+
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+
+      /* PWA - Estilos para instalação mobile */
+      @media (display-mode: standalone) {
+        .app-shell {
+          padding-top: env(safe-area-inset-top);
+          padding-bottom: env(safe-area-inset-bottom);
+        }
+      }
+
+      /* Melhorias para mobile */
+      @media (max-width: 480px) {
+        .app-shell {
+          padding: 8px;
+        }
+
+        .app-container {
+          border-radius: 16px;
+        }
+
+        .card {
+          padding: 14px;
+        }
+
+        .stat-card-value {
+          font-size: 20px;
+        }
+
+        .table-wrapper {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        table {
+          min-width: 600px;
+        }
+
+        #installPWA {
+          bottom: 10px;
+          right: 10px;
+          font-size: 11px;
+          padding: 6px 10px;
+        }
+
+        #realtimeIndicator {
+          top: 10px;
+          right: 10px;
+          padding: 6px 10px;
+          font-size: 10px;
+        }
+      }
+
+      /* Safe area para iPhone */
+      @supports (padding: max(0px)) {
+        .app-shell {
+          padding-left: max(12px, env(safe-area-inset-left));
+          padding-right: max(12px, env(safe-area-inset-right));
+        }
+      }
+
+      /* Loading skeleton animation */
+      .loading-skeleton {
+        background: linear-gradient(90deg, rgba(15, 23, 42, 0.5) 25%, rgba(30, 64, 175, 0.3) 50%, rgba(15, 23, 42, 0.5) 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s ease-in-out infinite;
         border-radius: 4px;
-        text-align: left;
+        color: transparent;
+      }
+
+      @keyframes loading {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>🚀 PIX Jornada 3</h1>
-      <p>Frontend React não foi construído ainda.</p>
-      
-      <div class="warning">
-        <strong>⚠️ Para construir o frontend, execute no servidor:</strong>
-        <div class="code">npm install<br/>npm run build<br/>npm start</div>
+    <div class="app-shell">
+      <div class="app-container" id="appRoot" style="opacity: 1; pointer-events: auto;">
+        <aside class="sidebar">
+          <div>
+            <div class="logo">
+              <div class="logo-icon">
+                <span>PX</span>
+              </div>
+              <div class="logo-text">
+                <div class="logo-title">PIX</div>
+                <div class="logo-subtitle">Dashboard &amp; API</div>
+              </div>
+            </div>
+
+            <div class="nav-section-label">Navegação</div>
+            <ul class="nav-list" id="navList">
+              <li class="nav-item">
+                <button class="nav-link active" data-section="dashboardSection">
+                  <span>Dashboard</span>
+                  <span class="nav-badge">Visão Geral</span>
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" data-section="usersSection">
+                  <span>Usuários PIX</span>
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" data-section="transactionsSection">
+                  <span>Transações</span>
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" data-section="apiKeysSection">
+                  <span>API &amp; Integração</span>
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link" data-section="testSection">
+                  <span>Teste PIX</span>
+                  <span class="nav-badge">Gerar QR Code</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="sidebar-footer">
+            <div class="user-pill">
+              <div class="user-avatar" id="userAvatar">A</div>
+              <div class="user-info">
+                <div class="user-name" id="userName">Admin</div>
+                <div class="user-role" id="userRole">Admin Jornada PIX</div>
+              </div>
+              <button class="logout-btn" id="logoutBtn">Sair</button>
+            </div>
+          </div>
+        </aside>
+
+        <main class="main">
+          <header class="topbar">
+            <div class="topbar-title">
+              <h1 id="pageTitle">Dashboard PIX</h1>
+              <span id="pageSubtitle">Resumo das operações PIX e recorrências</span>
+            </div>
+
+            <div class="env-badge">
+              <span class="env-dot"></span>
+              <span id="envLabel">Ambiente: Sandbox / Dev</span>
+            </div>
+          </header>
+
+          <section class="content">
+            <!-- DASHBOARD -->
+            <section id="dashboardSection" class="section active">
+              <!-- Filtros Globais -->
+              <div class="card" id="dashboardFilters">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <select class="form-select" id="filterPeriod" style="min-width: 150px;">
+                      <option value="ultimos30dias">Últimos 30 dias</option>
+                      <option value="hoje">Hoje</option>
+                      <option value="ultimos7dias">Últimos 7 dias</option>
+                      <option value="mesAtual">Mês Atual</option>
+                    </select>
+                    <select class="form-select" id="filterUser" style="min-width: 180px;">
+                      <option value="">Todos os usuários</option>
+                    </select>
+                    <select class="form-select" id="filterStatus" style="min-width: 140px;">
+                      <option value="">Todos os status</option>
+                      <option value="ATIVA">Ativas</option>
+                      <option value="PENDENTE">Pendentes</option>
+                      <option value="REJEITADA">Rejeitadas</option>
+                      <option value="CANCELADA">Canceladas</option>
+                    </select>
+                    <button class="btn btn-ghost btn-small" id="btnResetFilters">Limpar Filtros</button>
+                  </div>
+                  <button class="btn btn-ghost btn-small" id="btnRefreshDashboard">
+                    <span id="refreshIcon">↻</span> Atualizar
+                  </button>
+                </div>
+              </div>
+
+              <!-- KPIs Principais -->
+              <div class="grid grid-3" id="kpiCards">
+                <div class="card kpi-card" data-metric="totalUsuarios">
+                  <div class="stat-card-title">Total de Usuários PIX</div>
+                  <div class="stat-card-value" id="kpiTotalUsuarios">
+                    <span class="loading-skeleton">––</span>
+                  </div>
+                  <div class="stat-card-variation" id="kpiTotalUsuariosVar"></div>
+                  <div class="stat-card-sub">Usuários ativos no sistema</div>
+                </div>
+                <div class="card kpi-card" data-metric="totalTransacoes">
+                  <div class="stat-card-title">Total de Transações</div>
+                  <div class="stat-card-value" id="kpiTotalTransacoes">
+                    <span class="loading-skeleton">––</span>
+                  </div>
+                  <div class="stat-card-variation" id="kpiTotalTransacoesVar"></div>
+                  <div class="stat-card-sub">Todas as recorrências criadas</div>
+                </div>
+                <div class="card kpi-card" data-metric="transacoesAtivas">
+                  <div class="stat-card-title">Transações Ativas</div>
+                  <div class="stat-card-value" id="kpiTransacoesAtivas">
+                    <span class="loading-skeleton">––</span>
+                  </div>
+                  <div class="stat-card-variation" id="kpiTransacoesAtivasVar"></div>
+                  <div class="stat-card-sub">Recorrências processando pagamentos</div>
+                </div>
+                <div class="card kpi-card" data-metric="transacoesPendentes">
+                  <div class="stat-card-title">Pendentes</div>
+                  <div class="stat-card-value" id="kpiTransacoesPendentes">
+                    <span class="loading-skeleton">––</span>
+                  </div>
+                  <div class="stat-card-variation" id="kpiTransacoesPendentesVar"></div>
+                  <div class="stat-card-sub">Aguardando processamento</div>
+                </div>
+                <div class="card kpi-card" data-metric="transacoesRejeitadas">
+                  <div class="stat-card-title">Rejeitadas/Canceladas</div>
+                  <div class="stat-card-value" id="kpiTransacoesRejeitadas">
+                    <span class="loading-skeleton">––</span>
+                  </div>
+                  <div class="stat-card-variation" id="kpiTransacoesRejeitadasVar"></div>
+                  <div class="stat-card-sub">Transações com erro</div>
+                </div>
+                <div class="card kpi-card" data-metric="valorTotalRecorrencias">
+                  <div class="stat-card-title">Valor Total (R$)</div>
+                  <div class="stat-card-value" id="kpiValorTotal">
+                    <span class="loading-skeleton">R$ ––</span>
+                  </div>
+                  <div class="stat-card-variation" id="kpiValorTotalVar"></div>
+                  <div class="stat-card-sub">Soma de todas as recorrências</div>
+                </div>
+              </div>
+
+              <!-- Gráficos e Análises -->
+              <div class="grid grid-2">
+                <div class="card">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <div>
+                      <div style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">Tendência de Transações</div>
+                      <div style="font-size: 11px; color: var(--muted);">Evolução por status ao longo do tempo</div>
+                    </div>
+                  </div>
+                  <canvas id="chartTrend" style="max-height: 250px;"></canvas>
+                </div>
+                <div class="card">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <div>
+                      <div style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">Distribuição por Status</div>
+                      <div style="font-size: 11px; color: var(--muted);">Breakdown das transações</div>
+                    </div>
+                  </div>
+                  <canvas id="chartStatus" style="max-height: 250px;"></canvas>
+                </div>
+              </div>
+
+              <!-- Alertas e Insights -->
+              <div class="card" id="dashboardAlerts">
+                <div style="font-size: 13px; font-weight: 600; margin-bottom: 12px;">Alertas & Insights</div>
+                <div id="alertsList">
+                  <div class="loading-skeleton" style="height: 60px; border-radius: 8px;"></div>
+                </div>
+              </div>
+
+              <!-- Tabela de Transações Recentes -->
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">Transações Recentes</div>
+                    <div style="font-size: 11px; color: var(--muted);">Últimas 10 transações criadas</div>
+                  </div>
+                  <button class="btn btn-ghost btn-small" onclick="setActiveSection('transactionsSection')">
+                    Ver todas →
+                  </button>
+                </div>
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>TXID</th>
+                        <th>Devedor</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody id="dashboardRecentTransactions">
+                      <tr>
+                        <td colspan="6" style="text-align: center; color: var(--muted);">
+                          <span class="loading-skeleton">Carregando...</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <!-- USERS -->
+            <section id="usersSection" class="section">
+              <!-- Estatísticas Rápidas -->
+              <div class="grid grid-3">
+                <div class="card">
+                  <div class="stat-card-title">Total de Usuários</div>
+                  <div class="stat-card-value" id="usersTotal">–</div>
+                  <div class="stat-card-sub">Usuários cadastrados no sistema</div>
+                </div>
+                <div class="card">
+                  <div class="stat-card-title">Usuários Ativos</div>
+                  <div class="stat-card-value" id="usersActive">–</div>
+                  <div class="stat-card-sub">Usuários habilitados para uso</div>
+                </div>
+                <div class="card">
+                  <div class="stat-card-title">Total de Transações</div>
+                  <div class="stat-card-value" id="usersTotalTransactions">–</div>
+                  <div class="stat-card-sub">Transações vinculadas a usuários</div>
+                </div>
+              </div>
+
+              <!-- Documentação e Guia -->
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                      📚 Documentação: Como Cadastrar Usuário PIX
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted);">
+                      Guia completo para cadastrar credenciais do Banco do Brasil
+                    </div>
+                  </div>
+                  <button class="btn btn-ghost btn-small" id="btnToggleDocs">
+                    <span id="docsToggleIcon">▼</span> Ver Documentação
+                  </button>
+                </div>
+
+                <div id="usersDocumentation" class="hidden" style="margin-top: 12px; padding: 16px; background: rgba(15, 23, 42, 0.5); border-radius: 10px; border: 1px solid rgba(30, 64, 175, 0.3);">
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 12px; color: #fbbf24;">O que é um Usuário PIX?</div>
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.6;">
+                    Um usuário PIX representa um conjunto de credenciais do Banco do Brasil (BB) que permite criar e gerenciar recorrências PIX. 
+                    Cada usuário pode ter múltiplas transações associadas.
+                  </div>
+
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #60a5fa;">📋 Campos Obrigatórios</div>
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.8;">
+                    <div style="margin-bottom: 6px;"><strong>CNPJ:</strong> CNPJ da empresa (somente números, 14 dígitos)</div>
+                    <div style="margin-bottom: 6px;"><strong>Nome/Identificação:</strong> Nome descritivo para identificar o usuário (ex: "Loja Principal", "Sandbox Teste")</div>
+                    <div style="margin-bottom: 6px;"><strong>GW App Key:</strong> Chave de aplicação fornecida pelo Banco do Brasil no portal do desenvolvedor</div>
+                    <div style="margin-bottom: 6px;"><strong>Basic Auth (Base64):</strong> Credenciais no formato <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 6px; border-radius: 4px;">clientId:secret</code> codificadas em Base64</div>
+                  </div>
+
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #34d399;">📝 Campos Opcionais</div>
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.8;">
+                    <div style="margin-bottom: 6px;"><strong>Chave PIX Recebedor:</strong> Chave PIX que receberá os pagamentos (CPF, CNPJ, e-mail, telefone ou chave aleatória)</div>
+                    <div style="margin-bottom: 6px;"><strong>Nome Recebedor:</strong> Nome que aparecerá no QR Code PIX (máx. 140 caracteres)</div>
+                    <div style="margin-bottom: 6px;"><strong>Cidade Recebedor:</strong> Cidade do recebedor (máx. 140 caracteres)</div>
+                  </div>
+
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #f87171;">⚠️ Como Obter as Credenciais</div>
+                  <div style="font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.8;">
+                    <div style="margin-bottom: 8px;">
+                      <strong>1. Portal do Desenvolvedor BB:</strong> Acesse o portal do desenvolvedor do Banco do Brasil e crie uma aplicação.
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                      <strong>2. GW App Key:</strong> Após criar a aplicação, você receberá a GW App Key. Copie e cole no campo correspondente.
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                      <strong>3. Basic Auth:</strong> Você receberá um Client ID e Client Secret. Para gerar o Basic Auth Base64:
+                      <div style="margin-top: 6px; padding: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 6px; font-family: monospace; font-size: 11px;">
+                        No terminal: <code style="color: #60a5fa;">echo -n "clientId:secret" | base64</code><br/>
+                        Ou use um conversor online de Base64.
+                      </div>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                      <strong>4. Ambiente Sandbox vs Produção:</strong> Use credenciais de sandbox para testes e credenciais de produção para ambiente real.
+                    </div>
+                  </div>
+
+                  <div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #a78bfa;">💡 Dicas Importantes</div>
+                  <div style="font-size: 12px; color: var(--muted); line-height: 1.8;">
+                    <div style="margin-bottom: 6px;">• Mantenha as credenciais seguras e nunca as compartilhe</div>
+                    <div style="margin-bottom: 6px;">• Use nomes descritivos para facilitar a identificação (ex: "Produção - Loja A", "Sandbox - Testes")</div>
+                    <div style="margin-bottom: 6px;">• Você pode desativar um usuário sem deletá-lo (soft delete)</div>
+                    <div style="margin-bottom: 6px;">• Cada usuário pode ter múltiplas API Keys associadas</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Formulário de Cadastro -->
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                      Cadastrar Novo Usuário PIX
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted);">
+                      Preencha os dados abaixo para cadastrar um novo usuário PIX
+                    </div>
+                  </div>
+                  <button class="btn btn-primary btn-small" id="btnNewPixUser">
+                    + Novo Usuário PIX
+                  </button>
+                </div>
+
+                <div id="pixUserFormWrapper" class="card-plain hidden" style="margin-top: 12px;">
+                  <form id="pixUserForm" class="login-form">
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label">CNPJ * <span style="color: var(--muted); font-size: 11px;">(14 dígitos, somente números)</span></label>
+                        <input class="form-input" name="cnpj" maxlength="14" placeholder="12345678000190" pattern="[0-9]{14}" required />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">Nome / Identificação * <span style="color: var(--muted); font-size: 11px;">(Nome descritivo)</span></label>
+                        <input class="form-input" name="nome" placeholder="Ex: Loja Principal - Produção" maxlength="255" required />
+                      </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label">GW App Key (BB) * <span style="color: var(--muted); font-size: 11px;">(Chave do portal BB)</span></label>
+                        <input class="form-input" name="gw_app_key" placeholder="Cole a chave do gateway do Banco do Brasil" required />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">Basic Auth (Base64) * <span style="color: var(--muted); font-size: 11px;">(clientId:secret em base64)</span></label>
+                        <input class="form-input" name="basic_auth_base64" placeholder="Base64 de clientId:secret" required />
+                        <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+                          💡 Use: <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;">echo -n "clientId:secret" | base64</code>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label">Chave PIX Recebedor <span style="color: var(--muted); font-size: 11px;">(Opcional)</span></label>
+                        <input class="form-input" name="chave_pix_recebedor" placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">Nome Recebedor <span style="color: var(--muted); font-size: 11px;">(Opcional, máx. 140 caracteres)</span></label>
+                        <input class="form-input" name="nome_recebedor" placeholder="Nome que aparece no QR Code PIX" maxlength="140" />
+                      </div>
+                    </div>
+
+                    <div class="form-group">
+                      <label class="form-label">Cidade Recebedor <span style="color: var(--muted); font-size: 11px;">(Opcional, máx. 140 caracteres)</span></label>
+                      <input class="form-input" name="cidade_recebedor" placeholder="Cidade para o cadastro PIX" maxlength="140" />
+                    </div>
+
+                    <div class="btn-row">
+                      <button type="button" class="btn btn-ghost btn-small" id="btnCancelPixUser">
+                        Cancelar
+                      </button>
+                      <button type="submit" class="btn btn-primary btn-small">
+                        ✓ Salvar Usuário PIX
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Filtros e Busca -->
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;">
+                    <input type="text" class="form-input" id="usersSearch" placeholder="🔍 Buscar por CNPJ, nome ou ID..." style="min-width: 250px; flex: 1;" />
+                    <select class="form-select" id="usersFilterStatus" style="min-width: 140px;">
+                      <option value="">Todos os status</option>
+                      <option value="ativo">Apenas ativos</option>
+                      <option value="inativo">Apenas inativos</option>
+                    </select>
+                    <button class="btn btn-ghost btn-small" id="btnResetUsersFilters">Limpar</button>
+                  </div>
+                  <button class="btn btn-ghost btn-small" id="btnRefreshUsers">
+                    ↻ Atualizar
+                  </button>
+                </div>
+
+                <!-- Tabela de Usuários -->
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>CNPJ</th>
+                        <th>Nome</th>
+                        <th>Chave PIX</th>
+                        <th>Status</th>
+                        <th>Transações</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pixUsersTableBody">
+                      <tr>
+                        <td colspan="7" style="text-align: center; color: var(--muted);">
+                          <span class="loading-skeleton">Carregando usuários PIX...</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div id="usersEmptyState" class="hidden" style="text-align: center; padding: 40px; color: var(--muted);">
+                  <div style="font-size: 48px; margin-bottom: 12px;">📭</div>
+                  <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Nenhum usuário encontrado</div>
+                  <div style="font-size: 12px;">Cadastre seu primeiro usuário PIX para começar</div>
+                </div>
+              </div>
+            </section>
+
+            <!-- TRANSACTIONS -->
+            <section id="transactionsSection" class="section">
+              <!-- Estatísticas Rápidas -->
+              <div class="grid grid-3">
+                <div class="card">
+                  <div class="stat-card-title">Total de Transações</div>
+                  <div class="stat-card-value" id="transTotal">–</div>
+                  <div class="stat-card-sub">Transações cadastradas</div>
+                </div>
+                <div class="card">
+                  <div class="stat-card-title">Valor Total (R$)</div>
+                  <div class="stat-card-value" id="transTotalValue">–</div>
+                  <div class="stat-card-sub">Soma de todas as recorrências</div>
+                </div>
+                <div class="card">
+                  <div class="stat-card-title">Taxa de Sucesso</div>
+                  <div class="stat-card-value" id="transSuccessRate">–</div>
+                  <div class="stat-card-sub">% de transações ativas</div>
+                </div>
+              </div>
+
+              <!-- Filtros Avançados -->
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                      Filtros de Busca e Gerenciamento
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted);">
+                      Use os filtros abaixo para encontrar transações específicas
+                    </div>
+                  </div>
+                  <button class="btn btn-ghost btn-small" id="btnReloadTransactions">
+                    ↻ Atualizar
+                  </button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                  <input type="text" class="form-input" id="transSearch" placeholder="🔍 Buscar por TXID, CPF, nome ou contrato..." style="min-width: 280px; flex: 1;" />
+                  <select class="form-select" id="transFilterUser" style="min-width: 180px;">
+                    <option value="">Todos os usuários</option>
+                  </select>
+                  <select class="form-select" id="transFilterStatus" style="min-width: 140px;">
+                    <option value="">Todos os status</option>
+                    <option value="ATIVA">Ativas</option>
+                    <option value="PENDENTE">Pendentes</option>
+                    <option value="REJEITADA">Rejeitadas</option>
+                    <option value="CANCELADA">Canceladas</option>
+                    <option value="EXPIRADA">Expiradas</option>
+                  </select>
+                  <input type="date" class="form-input" id="transFilterDateFrom" placeholder="Data inicial" style="min-width: 140px;" />
+                  <input type="date" class="form-input" id="transFilterDateTo" placeholder="Data final" style="min-width: 140px;" />
+                  <button class="btn btn-ghost btn-small" id="btnResetTransFilters">Limpar Filtros</button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <select class="form-select" id="transSortBy" style="min-width: 160px;">
+                    <option value="created_at">Ordenar por: Data</option>
+                    <option value="valor_recorrencia">Ordenar por: Valor</option>
+                    <option value="status">Ordenar por: Status</option>
+                    <option value="nome_devedor">Ordenar por: Nome</option>
+                  </select>
+                  <select class="form-select" id="transSortOrder" style="min-width: 120px;">
+                    <option value="desc">Descendente</option>
+                    <option value="asc">Ascendente</option>
+                  </select>
+                  <select class="form-select" id="transLimit" style="min-width: 120px;">
+                    <option value="50">50 por página</option>
+                    <option value="100" selected>100 por página</option>
+                    <option value="200">200 por página</option>
+                    <option value="500">500 por página</option>
+                  </select>
+                  <div style="margin-left: auto; font-size: 12px; color: var(--muted);">
+                    Mostrando <span id="transShowing">0</span> de <span id="transTotalCount">0</span> transações
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tabela de Transações -->
+              <div class="card">
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style="cursor: pointer;" onclick="sortTransactionsTable('txid')">
+                          TXID <span class="sort-indicator" id="sortTxid">↕</span>
+                        </th>
+                        <th style="cursor: pointer;" onclick="sortTransactionsTable('devedor')">
+                          Devedor <span class="sort-indicator" id="sortDevedor">↕</span>
+                        </th>
+                        <th style="cursor: pointer;" onclick="sortTransactionsTable('valor')">
+                          Valor Recorrência <span class="sort-indicator" id="sortValor">↕</span>
+                        </th>
+                        <th style="cursor: pointer;" onclick="sortTransactionsTable('status')">
+                          Status <span class="sort-indicator" id="sortTransStatus">↕</span>
+                        </th>
+                        <th>Usuário PIX</th>
+                        <th style="cursor: pointer;" onclick="sortTransactionsTable('data')">
+                          Data <span class="sort-indicator" id="sortData">↕</span>
+                        </th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody">
+                      <tr>
+                        <td colspan="7" style="text-align: center; color: var(--muted);">
+                          <span class="loading-skeleton">Carregando transações...</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div id="transEmptyState" class="hidden" style="text-align: center; padding: 40px; color: var(--muted);">
+                  <div style="font-size: 48px; margin-bottom: 12px;">📭</div>
+                  <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">Nenhuma transação encontrada</div>
+                  <div style="font-size: 12px;">Ajuste os filtros ou crie uma nova transação</div>
+                </div>
+
+                <!-- Paginação -->
+                <div id="transPagination" class="hidden" style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(30, 64, 175, 0.3);">
+                  <button class="btn btn-ghost btn-small" id="btnTransPrev" disabled>← Anterior</button>
+                  <div style="font-size: 12px; color: var(--muted);">
+                    Página <span id="transCurrentPage">1</span> de <span id="transTotalPages">1</span>
+                  </div>
+                  <button class="btn btn-ghost btn-small" id="btnTransNext" disabled>Próxima →</button>
+                </div>
+              </div>
+
+              <!-- Detalhes do QR Code -->
+              <div class="card-plain hidden" id="qrDetailsCard" style="margin-top: 12px;">
+                <div id="qrDetailsWrapper"></div>
+              </div>
+            </section>
+
+            <!-- API KEYS -->
+            <section id="apiKeysSection" class="section">
+              <!-- Estatísticas -->
+              <div class="grid grid-3">
+                <div class="card">
+                  <div class="stat-card-title">Total de API Keys</div>
+                  <div class="stat-card-value" id="apiKeysTotal">–</div>
+                  <div class="stat-card-sub">Chaves geradas</div>
+                </div>
+                <div class="card">
+                  <div class="stat-card-title">Chaves Ativas</div>
+                  <div class="stat-card-value" id="apiKeysActive">–</div>
+                  <div class="stat-card-sub">Chaves em uso</div>
+                </div>
+                <div class="card">
+                  <div class="stat-card-title">Base URL da API</div>
+                  <div class="stat-card-value" style="font-size: 16px;" id="apiBaseUrl">–</div>
+                  <div class="stat-card-sub">Endpoint principal</div>
+                </div>
+              </div>
+
+              <!-- Gerar Nova API Key -->
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                      Gerar Nova API Key
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted);">
+                      Crie uma chave de API para integrar sistemas externos
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row" style="margin-bottom: 12px;">
+                  <div class="form-group">
+                    <label class="form-label">Usuário PIX *</label>
+                    <select class="form-select" id="apiPixUserSelect" required>
+                      <option value="">Selecione um usuário PIX</option>
+                    </select>
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+                      A API Key será vinculada a este usuário PIX
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Nome da Integração *</label>
+                    <input class="form-input" id="apiKeyNameInput" placeholder="Ex: ERP Loja X, Sistema de Vendas" required />
+                    <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+                      Nome descritivo para identificar a integração
+                    </div>
+                  </div>
+                </div>
+
+                <div class="btn-row" style="justify-content: flex-start;">
+                  <button class="btn btn-primary btn-small" id="btnCreateApiKey">
+                    🔑 Gerar API Key
+                  </button>
+                  <button class="btn btn-ghost btn-small" id="btnReloadApiKeys">
+                    ↻ Atualizar Lista
+                  </button>
+                </div>
+
+                <!-- API Key Gerada -->
+                <div id="generatedApiKeyWrapper" class="hidden" style="margin-top: 16px; padding: 16px; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 10px;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                    <span class="status-dot" style="background: #22c55e;"></span>
+                    <span style="font-size: 13px; font-weight: 600; color: #bbf7d0;">API Key gerada com sucesso!</span>
+                    <span style="font-size: 11px; color: var(--muted); margin-left: auto;">⚠️ Copie agora, ela não será exibida novamente</span>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 12px;">
+                    <label class="form-label">Sua API Key</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <div class="code" id="generatedApiKey" style="flex: 1; word-break: break-all;"></div>
+                      <button class="btn btn-ghost btn-small" id="btnCopyApiKey">📋 Copiar</button>
+                    </div>
+                  </div>
+                  
+                  <!-- Documentação Completa -->
+                  <div id="apiDocumentation" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(34, 197, 94, 0.2);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                      <div style="font-size: 13px; font-weight: 600; color: #60a5fa;">📚 Documentação Completa de Integração</div>
+                      <button class="btn btn-primary btn-small" id="btnDownloadApiDocs">
+                        📥 Baixar PDF
+                      </button>
+                    </div>
+                    
+                    <!-- Base URL -->
+                    <div style="margin-bottom: 16px;">
+                      <div style="font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #fbbf24;">Base URL da API</div>
+                      <div class="code code-soft" id="apiBaseUrlDoc" style="margin-bottom: 6px;"></div>
+                      <div style="font-size: 11px; color: var(--muted);">Use esta URL como base para todas as requisições</div>
+                    </div>
+
+                    <!-- Autenticação -->
+                    <div style="margin-bottom: 16px;">
+                      <div style="font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #f87171;">🔐 Autenticação</div>
+                      <div style="font-size: 11px; color: var(--muted); margin-bottom: 8px; line-height: 1.6;">
+                        Todas as requisições devem incluir o header <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 6px; border-radius: 4px;">X-API-Key</code> com sua chave de API.
+                      </div>
+                      <div class="code code-soft" style="font-size: 11px; margin-bottom: 6px;">
+                        X-API-Key: <span id="apiKeyHeaderDoc"></span>
+                      </div>
+                    </div>
+
+                    <!-- Endpoints Disponíveis -->
+                    <div style="margin-bottom: 16px;">
+                      <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #34d399;">📡 Endpoints Disponíveis</div>
+                      
+                      <!-- Criar Recorrência -->
+                      <div style="margin-bottom: 12px; padding: 10px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; border-left: 3px solid #60a5fa;">
+                        <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #60a5fa;">1. Criar Recorrência PIX (Gerar Pagamento)</div>
+                        <div class="code code-soft" style="font-size: 10px; margin-bottom: 6px; word-break: break-all;">
+                          POST <span id="apiEndpointJornada3"></span>/jornada3
+                        </div>
+                        <div style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Cria uma nova recorrência PIX e retorna o QR Code</div>
+                        <details style="margin-top: 8px;">
+                          <summary style="font-size: 11px; color: #60a5fa; cursor: pointer;">Ver exemplo completo</summary>
+                          <div style="margin-top: 8px; padding: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px;">
+                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">cURL:</div>
+                            <div class="code" id="apiExampleJornada3" style="font-size: 10px; white-space: pre-wrap; word-break: break-all;"></div>
+                            <div style="font-size: 10px; color: var(--muted); margin-top: 8px; margin-bottom: 4px;">Body JSON:</div>
+                            <div class="code code-soft" style="font-size: 10px; white-space: pre-wrap; word-break: break-all;" id="apiBodyJornada3"></div>
+                          </div>
+                        </details>
+                      </div>
+
+                      <!-- Consultar Recorrência -->
+                      <div style="margin-bottom: 12px; padding: 10px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; border-left: 3px solid #34d399;">
+                        <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #34d399;">2. Consultar Recorrência</div>
+                        <div class="code code-soft" style="font-size: 10px; margin-bottom: 6px; word-break: break-all;">
+                          GET <span id="apiEndpointRecorrencia"></span>/recorrencia/:idRec?pixUserId=:userId&txid=:txid
+                        </div>
+                        <div style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Consulta o status e detalhes de uma recorrência específica</div>
+                        <details style="margin-top: 8px;">
+                          <summary style="font-size: 11px; color: #34d399; cursor: pointer;">Ver exemplo completo</summary>
+                          <div style="margin-top: 8px; padding: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px;">
+                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">cURL:</div>
+                            <div class="code" id="apiExampleRecorrencia" style="font-size: 10px; white-space: pre-wrap; word-break: break-all;"></div>
+                          </div>
+                        </details>
+                      </div>
+
+                      <!-- Obter QR Code -->
+                      <div style="margin-bottom: 12px; padding: 10px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; border-left: 3px solid #fbbf24;">
+                        <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #fbbf24;">3. Obter QR Code de uma Transação</div>
+                        <div class="code code-soft" style="font-size: 10px; margin-bottom: 6px; word-break: break-all;">
+                          GET <span id="apiEndpointQrcode"></span>/qrcode/:txid
+                        </div>
+                        <div style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Retorna o QR Code (imagem base64) e código PIX copia e cola de uma transação</div>
+                        <details style="margin-top: 8px;">
+                          <summary style="font-size: 11px; color: #fbbf24; cursor: pointer;">Ver exemplo completo</summary>
+                          <div style="margin-top: 8px; padding: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px;">
+                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">cURL:</div>
+                            <div class="code" id="apiExampleQrcode" style="font-size: 10px; white-space: pre-wrap; word-break: break-all;"></div>
+                          </div>
+                        </details>
+                      </div>
+
+                      <!-- Listar Transações -->
+                      <div style="margin-bottom: 12px; padding: 10px; background: rgba(15, 23, 42, 0.5); border-radius: 6px; border-left: 3px solid #a78bfa;">
+                        <div style="font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #a78bfa;">4. Listar Transações (Gerenciar)</div>
+                        <div class="code code-soft" style="font-size: 10px; margin-bottom: 6px; word-break: break-all;">
+                          GET <span id="apiEndpointTransactions"></span>/transactions?pixUserId=:userId&status=:status&limit=:limit&offset=:offset
+                        </div>
+                        <div style="font-size: 11px; color: var(--muted); margin-bottom: 8px;">Lista todas as transações com filtros opcionais (status, paginação)</div>
+                        <details style="margin-top: 8px;">
+                          <summary style="font-size: 11px; color: #a78bfa; cursor: pointer;">Ver exemplo completo</summary>
+                          <div style="margin-top: 8px; padding: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px;">
+                            <div style="font-size: 10px; color: var(--muted); margin-bottom: 4px;">cURL:</div>
+                            <div class="code" id="apiExampleTransactions" style="font-size: 10px; white-space: pre-wrap; word-break: break-all;"></div>
+                            <div style="font-size: 10px; color: var(--muted); margin-top: 8px;">Parâmetros opcionais: status (ATIVA, PENDENTE, REJEITADA, etc), limit, offset</div>
+                          </div>
+                        </details>
+                      </div>
+                    </div>
+
+                    <!-- Passo a Passo -->
+                    <div style="margin-bottom: 16px;">
+                      <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #f87171;">🚀 Passo a Passo de Integração</div>
+                      <div style="font-size: 11px; color: var(--muted); line-height: 1.8;">
+                        <div style="margin-bottom: 8px;">
+                          <strong>1. Configure a Base URL:</strong> Use <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;" id="apiBaseUrlStep1"></code> como base para todas as requisições.
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                          <strong>2. Adicione o Header de Autenticação:</strong> Inclua <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;">X-API-Key: sua-chave-aqui</code> em todas as requisições.
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                          <strong>3. Para Gerar Pagamentos:</strong> Use POST <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;">/api/v1/pix/jornada3</code> com os dados do devedor e valores.
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                          <strong>4. Para Gerenciar Transações:</strong> Use GET <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;">/api/transactions</code> para listar, filtrar e consultar transações.
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                          <strong>5. Para Obter QR Codes:</strong> Use GET <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;">/api/pix/qrcode/:txid</code> para recuperar QR Codes de transações existentes.
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Campos Obrigatórios -->
+                    <div style="margin-bottom: 16px;">
+                      <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #fbbf24;">📋 Campos Obrigatórios para Criar Recorrência</div>
+                      <div style="font-size: 11px; color: var(--muted); line-height: 1.8;">
+                        <div style="margin-bottom: 4px;"><strong>pixUserId:</strong> ID do usuário PIX (já vinculado à sua API Key)</div>
+                        <div style="margin-bottom: 4px;"><strong>cpfDevedor:</strong> CPF do devedor (11 dígitos, somente números)</div>
+                        <div style="margin-bottom: 4px;"><strong>nomeDevedor:</strong> Nome completo do devedor (máx. 140 caracteres)</div>
+                        <div style="margin-bottom: 4px;"><strong>contrato:</strong> Número do contrato (máx. 35 caracteres)</div>
+                        <div style="margin-bottom: 4px;"><strong>dataInicial:</strong> Data do primeiro pagamento (formato: YYYY-MM-DD)</div>
+                        <div style="margin-bottom: 4px;"><strong>periodicidade:</strong> DIARIA, SEMANAL, QUINZENAL, MENSAL ou ANUAL</div>
+                        <div style="margin-bottom: 4px;"><strong>politicaRetentativa:</strong> PERMITE_3R_7D (padrão) ou PADRAO</div>
+                        <div style="margin-bottom: 4px;"><strong>valorRec:</strong> Valor da recorrência (decimal, ex: 99.90)</div>
+                        <div style="margin-bottom: 4px;"><strong>valorPrimeiroPagamento:</strong> Valor do primeiro pagamento (decimal)</div>
+                        <div style="margin-bottom: 4px;"><strong>chavePixRecebedor:</strong> Chave PIX do recebedor (CPF, CNPJ, e-mail, etc)</div>
+                        <div style="margin-bottom: 4px;"><strong>nomeRecebedor:</strong> Nome do recebedor (máx. 140 caracteres)</div>
+                        <div style="margin-bottom: 4px;"><strong>cidadeRecebedor:</strong> Cidade do recebedor (máx. 140 caracteres)</div>
+                        <div style="margin-top: 8px; padding: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px;">
+                          <strong>Opcional:</strong> convenio (máx. 35 caracteres)
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Respostas da API -->
+                    <div style="margin-bottom: 16px;">
+                      <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #60a5fa;">📥 Estrutura de Resposta</div>
+                      <div style="font-size: 11px; color: var(--muted); line-height: 1.6;">
+                        <div style="margin-bottom: 6px;">Todas as respostas seguem o formato:</div>
+                        <div class="code code-soft" style="font-size: 10px; white-space: pre-wrap; margin-bottom: 8px;">{
+  "success": true,
+  "data": { ... }
+}</div>
+                        <div style="margin-bottom: 6px;">Em caso de erro:</div>
+                        <div class="code code-soft" style="font-size: 10px; white-space: pre-wrap;">{
+  "success": false,
+  "error": "Mensagem de erro"
+}</div>
+                      </div>
+                    </div>
+
+                    <!-- Dicas -->
+                    <div>
+                      <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: #34d399;">💡 Dicas Importantes</div>
+                      <div style="font-size: 11px; color: var(--muted); line-height: 1.8;">
+                        <div style="margin-bottom: 6px;">• Mantenha sua API Key segura e nunca a exponha em código frontend</div>
+                        <div style="margin-bottom: 6px;">• Use HTTPS em produção para proteger as requisições</div>
+                        <div style="margin-bottom: 6px;">• O QR Code é gerado automaticamente após criar a recorrência</div>
+                        <div style="margin-bottom: 6px;">• Você pode consultar o status de uma recorrência a qualquer momento</div>
+                        <div style="margin-bottom: 6px;">• Use filtros na listagem de transações para melhor performance</div>
+                        <div style="margin-bottom: 6px;">• A API retorna imagens QR Code em formato base64 (data URL)</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lista de API Keys -->
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                      API Keys Cadastradas
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted);">
+                      Gerencie suas chaves de API
+                    </div>
+                  </div>
+                </div>
+
+                <div class="table-wrapper">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nome</th>
+                        <th>Chave (parcial)</th>
+                        <th>Status</th>
+                        <th>Último Uso</th>
+                        <th>Criada em</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody id="apiKeysTableBody">
+                      <tr>
+                        <td colspan="6" style="text-align: center; color: var(--muted);">
+                          Selecione um usuário PIX acima para listar as chaves.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <!-- TEST SECTION -->
+            <section id="testSection" class="section">
+              <div class="card">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                  <div>
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
+                      Teste PIX - Gerar QR Code
+                    </div>
+                    <div style="font-size: 12px; color: var(--muted);">
+                      Preencha os dados abaixo para gerar uma recorrência PIX e obter o QR Code e PIX Copia e Cola.
+                    </div>
+                  </div>
+                </div>
+
+                <form id="testPixForm" class="login-form" style="margin-top: 12px;">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Usuário PIX *</label>
+                      <select class="form-input" id="testPixUserId" name="pixUserId" required>
+                        <option value="">Selecione um usuário PIX</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">CPF Devedor *</label>
+                      <input class="form-input" id="testCpfDevedor" name="cpfDevedor" maxlength="11" placeholder="12345678901" required />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Nome Devedor *</label>
+                      <input class="form-input" id="testNomeDevedor" name="nomeDevedor" maxlength="140" placeholder="JOÃO DA SILVA" required />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Contrato *</label>
+                      <input class="form-input" id="testContrato" name="contrato" maxlength="35" placeholder="63100555" required />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Data Inicial *</label>
+                      <input class="form-input" id="testDataInicial" name="dataInicial" type="date" required />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Periodicidade *</label>
+                      <select class="form-input" id="testPeriodicidade" name="periodicidade" required>
+                        <option value="DIARIA">Diária</option>
+                        <option value="SEMANAL">Semanal</option>
+                        <option value="QUINZENAL">Quinzenal</option>
+                        <option value="MENSAL" selected>Mensal</option>
+                        <option value="ANUAL">Anual</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Política de Retentativa *</label>
+                      <select class="form-input" id="testPoliticaRetentativa" name="politicaRetentativa" required>
+                        <option value="PERMITE_3R_7D" selected>Permite 3 retentativas em 7 dias</option>
+                        <option value="PADRAO">Padrão</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Convênio (Opcional)</label>
+                      <input class="form-input" id="testConvenio" name="convenio" maxlength="35" placeholder="15018" />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Valor Recorrência (R$) *</label>
+                      <input class="form-input" id="testValorRec" name="valorRec" type="number" step="0.01" placeholder="99.90" required />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Valor Primeiro Pagamento (R$) *</label>
+                      <input class="form-input" id="testValorPrimeiroPagamento" name="valorPrimeiroPagamento" type="number" step="0.01" placeholder="99.90" required />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Chave PIX Recebedor *</label>
+                      <input class="form-input" id="testChavePixRecebedor" name="chavePixRecebedor" placeholder="02429647000169" required />
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Nome Recebedor *</label>
+                      <input class="form-input" id="testNomeRecebedor" name="nomeRecebedor" maxlength="140" placeholder="VIDA OURO" required />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label">Cidade Recebedor *</label>
+                      <input class="form-input" id="testCidadeRecebedor" name="cidadeRecebedor" maxlength="140" placeholder="BELO HORIZONTE" required />
+                    </div>
+                  </div>
+
+                  <div class="btn-row" style="margin-top: 12px;">
+                    <button type="submit" class="btn btn-primary">Gerar QR Code PIX</button>
+                  </div>
+                </form>
+
+                <!-- Resultado do QR Code -->
+                <div id="testQrResult" class="card-plain hidden" style="margin-top: 16px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <div>
+                      <div style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">
+                        QR Code e PIX Copia e Cola Gerados
+                      </div>
+                      <div style="font-size: 12px; color: var(--muted);">
+                        Use o QR Code para pagamento ou copie o código PIX.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="testQrDetailsWrapper" style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+                    <!-- QR Code e PIX Copia e Cola serão inseridos aqui -->
+                  </div>
+                </div>
+              </div>
+            </section>
+          </section>
+        </main>
       </div>
 
-      <p>Ou se estiver em desenvolvimento, use:</p>
-      <div class="code">npm run dev</div>
+      <!-- Login Overlay -->
+      <div class="login-overlay hidden" id="loginOverlay">
+        <div class="login-card">
+          <div class="login-header">
+            <div class="login-title-group">
+              <div class="login-title">Entrar no Painel PIX</div>
+              <div class="login-subtitle">
+                Use o usuário admin configurado no Supabase. Padrão: <strong>admin / admin123</strong>
+              </div>
+            </div>
+            <div class="login-badge">Admin PIX</div>
+          </div>
 
-      <div style="margin-top: 2rem;">
-        <a href="/api" class="button">Ver API</a>
-        <a href="/api/auth/me" class="button">Verificar Auth</a>
+          <form id="loginForm" class="login-form">
+            <div class="form-group">
+              <label class="form-label">Usuário ou e-mail</label>
+              <input class="form-input" name="username" placeholder="admin" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Senha</label>
+              <input class="form-input" name="password" type="password" placeholder="admin123" required />
+            </div>
+            <div class="btn-row" style="justify-content: space-between; margin-top: 8px;">
+              <span style="font-size: 11px; color: var(--muted);">
+                Dica: se não conseguir logar, execute <span class="code-soft">npm run create:admin</span>.
+              </span>
+              <button type="submit" class="btn btn-primary btn-small">Entrar</button>
+            </div>
+          </form>
+
+          <div class="login-footer">
+            Ambiente atual: <span id="loginEnvLabel">local / sandbox</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast">
+        <div class="toast-title" id="toastTitle">Mensagem</div>
+        <div class="toast-message" id="toastMessage">Detalhes</div>
       </div>
     </div>
+
+    <script>
+      (function () {
+        const API_BASE = window.location.origin + '/api';
+
+        const appRoot = document.getElementById('appRoot');
+        const loginOverlay = document.getElementById('loginOverlay');
+        const loginForm = document.getElementById('loginForm');
+        const loginEnvLabel = document.getElementById('loginEnvLabel');
+        const toast = document.getElementById('toast');
+        const toastTitle = document.getElementById('toastTitle');
+        const toastMessage = document.getElementById('toastMessage');
+
+        const navList = document.getElementById('navList');
+        const pageTitle = document.getElementById('pageTitle');
+        const pageSubtitle = document.getElementById('pageSubtitle');
+        const envLabel = document.getElementById('envLabel');
+        const apiBaseLabel = document.getElementById('apiBaseLabel');
+        const labelSandbox = document.getElementById('labelSandbox');
+
+        const userAvatar = document.getElementById('userAvatar');
+        const userName = document.getElementById('userName');
+        const userRole = document.getElementById('userRole');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        // Verificar se elementos críticos existem
+        if (!navList) {
+          console.error('navList não encontrado!');
+        }
+        if (!pageTitle) {
+          console.error('pageTitle não encontrado!');
+        }
+
+        const dashboardSection = document.getElementById('dashboardSection');
+        const usersSection = document.getElementById('usersSection');
+        const transactionsSection = document.getElementById('transactionsSection');
+        const apiKeysSection = document.getElementById('apiKeysSection');
+        const testSection = document.getElementById('testSection');
+
+        const statActive = document.getElementById('statActive');
+        const statPendingRejected = document.getElementById('statPendingRejected');
+        const statTotalValue = document.getElementById('statTotalValue');
+
+        const pixUsersTableBody = document.getElementById('pixUsersTableBody');
+        const pixUserFormWrapper = document.getElementById('pixUserFormWrapper');
+        const pixUserForm = document.getElementById('pixUserForm');
+        const btnNewPixUser = document.getElementById('btnNewPixUser');
+        const btnCancelPixUser = document.getElementById('btnCancelPixUser');
+
+        const transactionsTableBody = document.getElementById('transactionsTableBody');
+        const btnReloadTransactions = document.getElementById('btnReloadTransactions');
+        const qrDetailsWrapper = document.getElementById('qrDetailsWrapper');
+        const qrDetailsCard = document.getElementById('qrDetailsCard');
+
+        const apiPixUserSelect = document.getElementById('apiPixUserSelect');
+        const apiKeyNameInput = document.getElementById('apiKeyNameInput');
+        const btnCreateApiKey = document.getElementById('btnCreateApiKey');
+        const btnReloadApiKeys = document.getElementById('btnReloadApiKeys');
+        const generatedApiKeyWrapper = document.getElementById('generatedApiKeyWrapper');
+        const generatedApiKey = document.getElementById('generatedApiKey');
+        const generatedCurlExample = document.getElementById('generatedCurlExample');
+        const apiKeysTableBody = document.getElementById('apiKeysTableBody');
+
+        // Verificar se os elementos existem antes de acessá-los
+        if (apiBaseLabel) {
+          apiBaseLabel.textContent = API_BASE;
+        }
+        if (loginEnvLabel) {
+          loginEnvLabel.textContent = window.location.hostname.includes('localhost') ? 'local / sandbox' : 'produção';
+        }
+        if (envLabel) {
+          envLabel.textContent = window.location.hostname.includes('localhost') ? 'Ambiente: Sandbox / Dev' : 'Ambiente: Produção';
+        }
+
+        function showToast(message, type, title) {
+          toastTitle.textContent = title || (type === 'error' ? 'Erro' : type === 'success' ? 'Sucesso' : 'Aviso');
+          toastMessage.textContent = message;
+
+          toast.classList.remove('toast-success', 'toast-error', 'toast-warn');
+          if (type === 'success') toast.classList.add('toast-success');
+          else if (type === 'error') toast.classList.add('toast-error');
+          else toast.classList.add('toast-warn');
+
+          toast.classList.add('visible');
+
+          setTimeout(() => {
+            toast.classList.remove('visible');
+          }, 3500);
+        }
+
+        function getToken() {
+          // Autenticação desativada: sempre sem token
+          return '';
+        }
+
+        function setToken(token) {
+          // Autenticação desativada: função mantida apenas por compatibilidade
+        }
+
+        async function apiFetch(path, options) {
+          const token = getToken();
+          const headers = Object.assign(
+            {
+              'Content-Type': 'application/json'
+            },
+            options && options.headers
+          );
+
+          if (token) {
+            headers.Authorization = 'Bearer ' + token;
+          }
+
+          const res = await fetch(API_BASE + path, Object.assign({}, options, { headers }));
+          let data = null;
+
+          try {
+            data = await res.json();
+          } catch (e) {
+            // ignore
+          }
+
+          if (!res.ok) {
+            const msg = (data && (data.error || data.message)) || 'Erro inesperado na API';
+            throw new Error(msg);
+          }
+
+          return data;
+        }
+
+        function setActiveSection(sectionId) {
+          const sections = [dashboardSection, usersSection, transactionsSection, apiKeysSection, testSection];
+          sections.forEach((s) => s.classList.remove('active'));
+
+          const target = document.getElementById(sectionId);
+          if (target) {
+            target.classList.add('active');
+          }
+
+          document.querySelectorAll('.nav-link').forEach((btn) => {
+            if (btn.getAttribute('data-section') === sectionId) {
+              btn.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+            }
+          });
+
+          // Verificar se elementos existem antes de atualizar
+          if (sectionId === 'dashboardSection') {
+            if (pageTitle) pageTitle.textContent = 'Dashboard PIX';
+            if (pageSubtitle) pageSubtitle.textContent = 'Resumo das operações PIX e recorrências';
+          } else if (sectionId === 'usersSection') {
+            if (pageTitle) pageTitle.textContent = 'Usuários PIX';
+            if (pageSubtitle) pageSubtitle.textContent = 'Gerencie as credenciais dos clientes PIX (BB)';
+          } else if (sectionId === 'transactionsSection') {
+            if (pageTitle) pageTitle.textContent = 'Transações';
+            if (pageSubtitle) pageSubtitle.textContent = 'Liste transações PIX e visualize QR Codes';
+          } else if (sectionId === 'apiKeysSection') {
+            if (pageTitle) pageTitle.textContent = 'API & Integração';
+            if (pageSubtitle) pageSubtitle.textContent = 'Gere API Keys e veja exemplos de requisição';
+          } else if (sectionId === 'testSection') {
+            if (pageTitle) pageTitle.textContent = 'Teste PIX';
+            if (pageSubtitle) pageSubtitle.textContent = 'Gere QR Code e PIX Copia e Cola para testes';
+            if (typeof loadPixUsersForTest === 'function') {
+              loadPixUsersForTest();
+            }
+          }
+        }
+
+        // Event listener simplificado e direto para o menu de navegação
+        function setupNavListeners() {
+          console.log('Configurando listeners do menu...'); // Debug
+          
+          // Garantir que os botões do menu sejam clicáveis
+          const navLinks = document.querySelectorAll('.nav-link');
+          console.log('Encontrados', navLinks.length, 'botões do menu'); // Debug
+          
+          navLinks.forEach((btn, index) => {
+            // Forçar estilos para garantir clicabilidade
+            btn.style.cursor = 'pointer';
+            btn.style.userSelect = 'none';
+            btn.style.pointerEvents = 'auto';
+            btn.style.position = 'relative';
+            btn.style.zIndex = '101';
+            
+            // Adicionar listener direto (sem clonar para evitar problemas)
+            btn.onclick = function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.stopImmediatePropagation();
+              
+              const sectionId = this.getAttribute('data-section');
+              console.log('Menu clicado:', sectionId, 'Index:', index); // Debug
+              
+              if (sectionId) {
+                setActiveSection(sectionId);
+              }
+              return false;
+            };
+          });
+          
+          // Também adicionar listener no container como backup
+          if (navList) {
+            navList.onclick = function(e) {
+              const btn = e.target.closest('.nav-link');
+              if (btn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const sectionId = btn.getAttribute('data-section');
+                console.log('Menu clicado (via container):', sectionId); // Debug
+                if (sectionId) {
+                  setActiveSection(sectionId);
+                }
+                return false;
+              }
+            };
+          }
+        }
+        
+        // Configurar listeners após tudo estar carregado
+        function initNavMenu() {
+          if (navList && navList.querySelectorAll('.nav-link').length > 0) {
+            setupNavListeners();
+          } else {
+            // Tentar novamente após um delay
+            setTimeout(initNavMenu, 200);
+          }
+        }
+        
+        // Inicializar quando o DOM estiver pronto
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initNavMenu, 100);
+          });
+        } else {
+          setTimeout(initNavMenu, 100);
+        }
+
+        async function loadDashboard() {
+          try {
+            const [usersRes, transRes] = await Promise.all([
+              apiFetch('/users'),
+              apiFetch('/transactions?limit=1000')
+            ]);
+
+            const users = (usersRes && usersRes.data) || [];
+            const trans = (transRes && transRes.data) || [];
+
+            const active = trans.filter((t) => t.status === 'ATIVA').length;
+            const pending = trans.filter((t) => t.status === 'PENDENTE').length;
+            const rejected = trans.filter((t) => t.status === 'REJEITADA').length;
+
+            const totalValue = trans.reduce((sum, t) => {
+              const v = parseFloat(t.valor_recorrencia || 0);
+              return sum + (isNaN(v) ? 0 : v);
+            }, 0);
+
+            // Verificar se elementos existem antes de atualizar
+            if (statActive) statActive.textContent = String(active);
+            if (statPendingRejected) statPendingRejected.textContent = pending + ' pendentes · ' + rejected + ' rejeitadas';
+            if (statTotalValue) statTotalValue.textContent = 'R$ ' + totalValue.toFixed(2);
+            if (labelSandbox) labelSandbox.textContent = 'Sandbox / Teste recomendado';
+          } catch (err) {
+            showToast(err.message || 'Erro ao carregar dashboard', 'error');
+          }
+        }
+
+        async function loadPixUsers() {
+          try {
+            const res = await apiFetch('/users');
+            const users = (res && res.data) || [];
+
+            if (!users.length) {
+              pixUsersTableBody.innerHTML =
+                '<tr><td colspan="5" style="text-align:center; color: var(--muted);">Nenhum usuário PIX cadastrado ainda.</td></tr>';
+            } else {
+              pixUsersTableBody.innerHTML = users
+                .map((u) => {
+                  const statusBadge = u.ativo
+                    ? '<span class="badge badge-success"><span class="status-dot"></span>Ativo</span>'
+                    : '<span class="badge badge-soft"><span class="status-dot-muted"></span>Inativo</span>';
+                  return (
+                    '<tr>' +
+                    '<td>#' +
+                    u.id +
+                    '</td>' +
+                    '<td>' +
+                    (u.cnpj || '-') +
+                    '</td>' +
+                    '<td>' +
+                    (u.nome || '-') +
+                    '</td>' +
+                    '<td>' +
+                    (u.chave_pix_recebedor || '-') +
+                    '</td>' +
+                    '<td>' +
+                    statusBadge +
+                    '</td>' +
+                    '</tr>'
+                  );
+                })
+                .join('');
+            }
+
+            apiPixUserSelect.innerHTML =
+              '<option value="">Selecione um usuário PIX</option>' +
+              users
+                .filter((u) => u.ativo)
+                .map((u) => '<option value="' + u.id + '">' + (u.nome || u.cnpj || u.id) + '</option>')
+                .join('');
+          } catch (err) {
+            pixUsersTableBody.innerHTML =
+              '<tr><td colspan="5" style="text-align:center; color: var(--muted);">Erro ao carregar usuários PIX.</td></tr>';
+            showToast(err.message || 'Erro ao carregar usuários PIX', 'error');
+          }
+        }
+
+        btnNewPixUser.addEventListener('click', () => {
+          pixUserFormWrapper.classList.remove('hidden');
+        });
+
+        btnCancelPixUser.addEventListener('click', () => {
+          pixUserFormWrapper.classList.add('hidden');
+          pixUserForm.reset();
+        });
+
+        pixUserForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          const formData = new FormData(pixUserForm);
+          const payload = {};
+          formData.forEach((value, key) => {
+            payload[key] = value;
+          });
+
+          try {
+            await apiFetch('/users', {
+              method: 'POST',
+              body: JSON.stringify(payload)
+            });
+            showToast('Usuário PIX criado com sucesso.', 'success');
+            pixUserForm.reset();
+            pixUserFormWrapper.classList.add('hidden');
+            loadPixUsers();
+          } catch (err) {
+            showToast(err.message || 'Erro ao criar usuário PIX', 'error');
+          }
+        });
+
+        async function loadTransactions() {
+          try {
+            const res = await apiFetch('/transactions?limit=100');
+            const trans = (res && res.data) || [];
+
+            if (!trans.length) {
+              transactionsTableBody.innerHTML =
+                '<tr><td colspan="6" style="text-align:center; color: var(--muted);">Nenhuma transação encontrada.</td></tr>';
+            } else {
+              transactionsTableBody.innerHTML = trans
+                .map((t) => {
+                  const status =
+                    t.status || 'PENDENTE';
+                  const statusClass =
+                    status === 'ATIVA'
+                      ? 'badge-success'
+                      : status === 'PENDENTE'
+                      ? 'badge-warn'
+                      : 'badge-soft';
+
+                  const dateStr = t.created_at
+                    ? new Date(t.created_at).toLocaleString('pt-BR')
+                    : '-';
+
+                  const value = parseFloat(t.valor_recorrencia || 0);
+
+                  return (
+                    '<tr>' +
+                    '<td><span class="code-soft">' +
+                    (t.txid || '-') +
+                    '</span></td>' +
+                    '<td>' +
+                    (t.nome_devedor || '-') +
+                    '<br/><span style="font-size:11px; color: var(--muted);">' +
+                    (t.cpf_devedor || '') +
+                    '</span></td>' +
+                    '<td>R$ ' +
+                    (isNaN(value) ? '0,00' : value.toFixed(2)) +
+                    '</td>' +
+                    '<td><span class="badge ' +
+                    statusClass +
+                    '"><span class="status-dot"></span>' +
+                    status +
+                    '</span></td>' +
+                    '<td>' +
+                    dateStr +
+                    '</td>' +
+                    '<td><button class="btn btn-ghost btn-small" data-action="view-qr" data-txid="' +
+                    t.txid +
+                    '">Ver QR</button></td>' +
+                    '</tr>'
+                  );
+                })
+                .join('');
+            }
+          } catch (err) {
+            transactionsTableBody.innerHTML =
+              '<tr><td colspan="6" style="text-align:center; color: var(--muted);">Erro ao carregar transações.</td></tr>';
+            showToast(err.message || 'Erro ao carregar transações', 'error');
+          }
+        }
+
+        btnReloadTransactions.addEventListener('click', () => {
+          loadTransactions();
+        });
+
+        transactionsTableBody.addEventListener('click', async (event) => {
+          const btn = event.target.closest('button[data-action="view-qr"]');
+          if (!btn) return;
+
+          const txid = btn.getAttribute('data-txid');
+          if (!txid) return;
+
+          try {
+            const res = await apiFetch('/pix/qrcode/' + encodeURIComponent(txid));
+            const data = res && res.data;
+            if (!data) {
+              showToast('QR Code não encontrado para esta transação.', 'warn');
+              return;
+            }
+
+            qrDetailsCard.classList.remove('hidden');
+            qrDetailsWrapper.innerHTML =
+              '<div class="qr-container">' +
+              (data.qrCodeImage
+                ? '<img class="qr-image" src="' +
+                  data.qrCodeImage +
+                  '" alt="QR Code PIX" />'
+                : '') +
+              '<div style="width:100%; max-width:520px;">' +
+              '<div style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">' +
+              '<span style="font-size:13px; font-weight:600;">PIX Copia e Cola</span>' +
+              '<button class="btn btn-ghost btn-small" id="btnCopyPixCode">Copiar código</button>' +
+              '</div>' +
+              '<div class="code" id="pixCodeValue">' +
+              data.pixCopiaECola +
+              '</div>' +
+              '</div>' +
+              '<div class="tag-row" style="margin-top:10px; align-self:flex-start;">' +
+              '<span class="badge-soft"><span class="status-dot"></span>TXID ' +
+              data.txid +
+              '</span>' +
+              '<span class="badge-soft"><span class="status-dot-muted"></span>Valor Recorrência R$ ' +
+              (parseFloat(data.valor && data.valor.recorrencia) || 0).toFixed(2) +
+              '</span>' +
+              '</div>' +
+              '</div>';
+
+            const btnCopy = document.getElementById('btnCopyPixCode');
+            const pixCodeEl = document.getElementById('pixCodeValue');
+            if (btnCopy && pixCodeEl) {
+              btnCopy.addEventListener('click', () => {
+                const text = pixCodeEl.textContent || '';
+                window.navigator.clipboard
+                  .writeText(text)
+                  .then(() => showToast('PIX copia e cola copiado!', 'success'))
+                  .catch(() => showToast('Não foi possível copiar para a área de transferência.', 'warn'));
+              });
+            }
+
+            showToast('QR Code carregado com sucesso.', 'success');
+          } catch (err) {
+            showToast(err.message || 'Erro ao obter QR Code', 'error');
+          }
+        });
+
+        async function loadApiKeys() {
+          const userId = apiPixUserSelect.value;
+          if (!userId) {
+            apiKeysTableBody.innerHTML =
+              '<tr><td colspan="5" style="text-align:center; color: var(--muted);">Selecione um usuário PIX acima.</td></tr>';
+            return;
+          }
+
+          try {
+            const res = await apiFetch('/api-keys?userId=' + encodeURIComponent(userId));
+            const keys = (res && res.data) || [];
+
+            if (!keys.length) {
+              apiKeysTableBody.innerHTML =
+                '<tr><td colspan="5" style="text-align:center; color: var(--muted);">Nenhuma API Key para este usuário.</td></tr>';
+            } else {
+              apiKeysTableBody.innerHTML = keys
+                .map((k) => {
+                  const keyShort = (k.key || '').slice(0, 18) + '...';
+                  const statusBadge =
+                    k.active === 1 || k.active === true
+                      ? '<span class="badge badge-success"><span class="status-dot"></span>Ativa</span>'
+                      : '<span class="badge badge-soft"><span class="status-dot-muted"></span>Inativa</span>';
+                  const lastUsed = k.last_used ? new Date(k.last_used).toLocaleString('pt-BR') : 'Nunca';
+                  const createdAt = k.created_at ? new Date(k.created_at).toLocaleString('pt-BR') : '-';
+                  return (
+                    '<tr>' +
+                    '<td>' +
+                    (k.name || 'Sem nome') +
+                    '</td>' +
+                    '<td><span class="code-soft">' +
+                    keyShort +
+                    '</span></td>' +
+                    '<td>' +
+                    statusBadge +
+                    '</td>' +
+                    '<td>' +
+                    lastUsed +
+                    '</td>' +
+                    '<td>' +
+                    createdAt +
+                    '</td>' +
+                    '</tr>'
+                  );
+                })
+                .join('');
+            }
+          } catch (err) {
+            apiKeysTableBody.innerHTML =
+              '<tr><td colspan="5" style="text-align:center; color: var(--muted);">Erro ao carregar API Keys.</td></tr>';
+            showToast(err.message || 'Erro ao carregar API Keys', 'error');
+          }
+        }
+
+        btnReloadApiKeys.addEventListener('click', loadApiKeys);
+
+        apiPixUserSelect.addEventListener('change', () => {
+          loadApiKeys();
+        });
+
+        btnCreateApiKey.addEventListener('click', async () => {
+          const userId = apiPixUserSelect.value;
+          const name = apiKeyNameInput.value.trim() || 'Integração';
+
+          if (!userId) {
+            showToast('Selecione um usuário PIX para gerar a API Key.', 'warn');
+            return;
+          }
+
+          try {
+            const res = await apiFetch('/api-keys', {
+              method: 'POST',
+              body: JSON.stringify({ pixUserId: userId, name: name })
+            });
+
+            const key = res && res.data && res.data.key;
+            if (!key) {
+              showToast('API Key gerada, mas resposta inesperada da API.', 'warn');
+              return;
+            }
+
+            generatedApiKeyWrapper.classList.remove('hidden');
+            generatedApiKey.textContent = key;
+
+            const apiExternalBase = window.location.hostname.includes('localhost') 
+              ? 'http://localhost:3000/api/v1/pix'
+              : 'https://pix.masterclassic.com.br/api/v1/pix';
+            
+            const curlExample =
+              'curl -X POST ' +
+              apiExternalBase +
+              '/jornada3 \\\\\n' +
+              '  -H "X-API-Key: ' +
+              key +
+              '" \\\\\n' +
+              '  -H "Content-Type: application/json" \\\\\n' +
+              '  -d \'{"cpfDevedor": "00000000000", "nomeDevedor": "TESTE", ...}\'';
+
+            generatedCurlExample.textContent = curlExample;
+
+            window.navigator.clipboard
+              .writeText(key)
+              .then(() => showToast('API Key criada e copiada para a área de transferência.', 'success'))
+              .catch(() => showToast('API Key criada. Copie-a manualmente.', 'success'));
+
+            apiKeyNameInput.value = '';
+            loadApiKeys();
+          } catch (err) {
+            showToast(err.message || 'Erro ao criar API Key', 'error');
+          }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+          showToast('Login desativado neste ambiente. Você já está com acesso total.', 'info');
+        });
+
+        // Funções para a aba de Teste PIX
+        const testPixForm = document.getElementById('testPixForm');
+        const testPixUserId = document.getElementById('testPixUserId');
+        const testQrResult = document.getElementById('testQrResult');
+        const testQrDetailsWrapper = document.getElementById('testQrDetailsWrapper');
+
+        async function loadPixUsersForTest() {
+          try {
+            const res = await apiFetch('/users');
+            const users = (res && res.data) || [];
+            
+            testPixUserId.innerHTML = '<option value="">Selecione um usuário PIX</option>';
+            users.filter(u => u.ativo).forEach(user => {
+              const option = document.createElement('option');
+              option.value = user.id;
+              option.textContent = `${user.nome} (${user.cnpj})`;
+              testPixUserId.appendChild(option);
+            });
+          } catch (err) {
+            showToast(err.message || 'Erro ao carregar usuários PIX', 'error');
+          }
+        }
+
+        testPixForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          
+          const formData = new FormData(testPixForm);
+          const payload = {
+            pixUserId: parseInt(testPixUserId.value),
+            cpfDevedor: document.getElementById('testCpfDevedor').value,
+            nomeDevedor: document.getElementById('testNomeDevedor').value,
+            contrato: document.getElementById('testContrato').value,
+            dataInicial: document.getElementById('testDataInicial').value,
+            periodicidade: document.getElementById('testPeriodicidade').value,
+            politicaRetentativa: document.getElementById('testPoliticaRetentativa').value,
+            valorRec: document.getElementById('testValorRec').value,
+            valorPrimeiroPagamento: document.getElementById('testValorPrimeiroPagamento').value,
+            chavePixRecebedor: document.getElementById('testChavePixRecebedor').value,
+            nomeRecebedor: document.getElementById('testNomeRecebedor').value,
+            cidadeRecebedor: document.getElementById('testCidadeRecebedor').value
+          };
+
+          const convenio = document.getElementById('testConvenio').value;
+          if (convenio) {
+            payload.convenio = convenio;
+          }
+
+          try {
+            showToast('Gerando recorrência PIX...', 'info');
+            
+            const res = await apiFetch('/pix/jornada3', {
+              method: 'POST',
+              body: JSON.stringify(payload)
+            });
+
+            if (!res.success) {
+              throw new Error(res.error || 'Erro ao criar recorrência');
+            }
+
+            const txid = res.data?.txid;
+            if (!txid) {
+              throw new Error('TXID não retornado pela API');
+            }
+
+            // Aguardar um pouco para o QR Code ser gerado
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // Buscar o QR Code
+            const qrRes = await apiFetch('/pix/qrcode/' + encodeURIComponent(txid));
+            const qrData = qrRes && qrRes.data;
+
+            if (!qrData || !qrData.qrCodeImage) {
+              throw new Error('QR Code não foi gerado. Tente novamente.');
+            }
+
+            // Exibir QR Code e PIX Copia e Cola
+            testQrDetailsWrapper.innerHTML =
+              '<div class="qr-container">' +
+              '<img class="qr-image" src="' + qrData.qrCodeImage + '" alt="QR Code PIX" />' +
+              '<div style="width:100%; max-width:520px;">' +
+              '<div style="margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">' +
+              '<span style="font-size:13px; font-weight:600;">PIX Copia e Cola</span>' +
+              '<button class="btn btn-ghost btn-small" id="btnCopyTestPixCode">Copiar código</button>' +
+              '</div>' +
+              '<div class="code" id="testPixCodeValue">' + qrData.pixCopiaECola + '</div>' +
+              '</div>' +
+              '<div class="tag-row" style="margin-top:10px; align-self:flex-start;">' +
+              '<span class="badge-soft"><span class="status-dot"></span>TXID ' + txid + '</span>' +
+              '<span class="badge-soft"><span class="status-dot-muted"></span>Valor R$ ' +
+              parseFloat(payload.valorPrimeiroPagamento || 0).toFixed(2) +
+              '</span>' +
+              '</div>' +
+              '</div>';
+
+            testQrResult.classList.remove('hidden');
+
+            // Adicionar handler para copiar PIX Copia e Cola
+            const btnCopy = document.getElementById('btnCopyTestPixCode');
+            const pixCodeEl = document.getElementById('testPixCodeValue');
+            if (btnCopy && pixCodeEl) {
+              btnCopy.addEventListener('click', () => {
+                const text = pixCodeEl.textContent || '';
+                window.navigator.clipboard
+                  .writeText(text)
+                  .then(() => showToast('PIX copia e cola copiado!', 'success'))
+                  .catch(() => showToast('Não foi possível copiar para a área de transferência.', 'warn'));
+              });
+            }
+
+            showToast('QR Code gerado com sucesso!', 'success');
+          } catch (err) {
+            showToast(err.message || 'Erro ao gerar QR Code', 'error');
+            testQrResult.classList.add('hidden');
+          }
+        });
+
+        // Login desativado: esconder overlay e carregar dados diretamente
+        async function bootstrapWithoutAuth() {
+          if (loginOverlay) {
+            loginOverlay.classList.add('hidden');
+            loginOverlay.style.display = 'none';
+            loginOverlay.style.pointerEvents = 'none';
+            loginOverlay.style.zIndex = '-1';
+          }
+          
+          if (appRoot) {
+            appRoot.style.opacity = '1';
+            appRoot.style.pointerEvents = 'auto';
+            appRoot.style.zIndex = '1';
+          }
+          
+          // Verificar se elementos existem antes de atualizar
+          if (userName) {
+            userName.textContent = 'Admin Local';
+          }
+          if (userRole) {
+            userRole.textContent = 'Acesso sem login';
+          }
+          if (userAvatar) {
+            userAvatar.textContent = 'A';
+          }
+
+          // Garantir que o sidebar seja clicável
+          const sidebar = document.querySelector('.sidebar');
+          if (sidebar) {
+            sidebar.style.pointerEvents = 'auto';
+            sidebar.style.zIndex = '100';
+          }
+
+          loadDashboard();
+          loadPixUsers();
+          loadTransactions();
+          
+          // Atualizar URLs da API externa na documentação
+          const apiBaseUrlDoc = document.getElementById('apiBaseUrlDoc');
+          const apiBaseUrlStep1 = document.getElementById('apiBaseUrlStep1');
+          const apiExternalBase = window.location.hostname.includes('localhost') 
+            ? 'http://localhost:3000/api/v1/pix'
+            : 'https://pix.masterclassic.com.br/api/v1/pix';
+          
+          if (apiBaseUrlDoc) {
+            apiBaseUrlDoc.textContent = apiExternalBase;
+          }
+          if (apiBaseUrlStep1) {
+            apiBaseUrlStep1.textContent = apiExternalBase;
+          }
+          
+          // Reconfigurar listeners após carregar
+          setTimeout(() => {
+            if (typeof setupNavListeners === 'function') {
+              setupNavListeners();
+            }
+          }, 500);
+        }
+
+        bootstrapWithoutAuth();
+
+        // Event listener para o botão "Ver Documentação"
+        const btnToggleDocs = document.getElementById('btnToggleDocs');
+        const usersDocumentation = document.getElementById('usersDocumentation');
+        const docsToggleIcon = document.getElementById('docsToggleIcon');
+        
+        if (btnToggleDocs && usersDocumentation) {
+          btnToggleDocs.addEventListener('click', function() {
+            const isHidden = usersDocumentation.classList.contains('hidden');
+            if (isHidden) {
+              usersDocumentation.classList.remove('hidden');
+              if (docsToggleIcon) docsToggleIcon.textContent = '▲';
+            } else {
+              usersDocumentation.classList.add('hidden');
+              if (docsToggleIcon) docsToggleIcon.textContent = '▼';
+            }
+          });
+        }
+
+        // Definir data inicial padrão como hoje
+        const testDataInicial = document.getElementById('testDataInicial');
+        if (testDataInicial) {
+          const today = new Date().toISOString().split('T')[0];
+          testDataInicial.value = today;
+          testDataInicial.min = today;
+        }
+
+        // Função para gerar e baixar documentação em PDF
+        const btnDownloadApiDocs = document.getElementById('btnDownloadApiDocs');
+        if (btnDownloadApiDocs) {
+          btnDownloadApiDocs.addEventListener('click', function() {
+            try {
+              const { jsPDF } = window.jspdf;
+              const doc = new jsPDF();
+              const pageWidth = doc.internal.pageSize.getWidth();
+              const pageHeight = doc.internal.pageSize.getHeight();
+              let yPos = 20;
+              const margin = 20;
+              const lineHeight = 7;
+              const sectionSpacing = 10;
+
+              // Cores
+              const colorPrimary = [96, 165, 250]; // #60a5fa
+              const colorSuccess = [52, 211, 153]; // #34d399
+              const colorWarning = [251, 191, 36]; // #fbbf24
+              const colorDanger = [248, 113, 113]; // #f87171
+
+              // Função auxiliar para adicionar texto com quebra de linha
+              function addText(text, fontSize = 10, isBold = false, color = [0, 0, 0], maxWidth = pageWidth - 2 * margin) {
+                doc.setFontSize(fontSize);
+                doc.setTextColor(color[0], color[1], color[2]);
+                if (isBold) {
+                  doc.setFont(undefined, 'bold');
+                } else {
+                  doc.setFont(undefined, 'normal');
+                }
+                const lines = doc.splitTextToSize(text, maxWidth);
+                if (yPos + lines.length * lineHeight > pageHeight - margin) {
+                  doc.addPage();
+                  yPos = 20;
+                }
+                doc.text(lines, margin, yPos);
+                yPos += lines.length * lineHeight;
+                return lines.length;
+              }
+
+              // Cabeçalho
+              addText('Documentação da API PIX', 18, true, colorPrimary);
+              yPos += 5;
+              addText('Guia Completo de Integração', 12, false, [100, 100, 100]);
+              addText(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 9, false, [150, 150, 150]);
+              yPos += sectionSpacing;
+
+              // Base URL
+              const baseUrl = document.getElementById('apiBaseUrlDoc')?.textContent || 
+                (window.location.hostname.includes('localhost') 
+                  ? 'http://localhost:3000/api/v1/pix'
+                  : 'https://pix.masterclassic.com.br/api/v1/pix');
+              addText('Base URL da API', 14, true, colorWarning);
+              addText(baseUrl, 10, false, [0, 0, 0]);
+              yPos += sectionSpacing;
+
+              // Autenticação
+              const apiKey = document.getElementById('generatedApiKey')?.textContent || 'SUA_API_KEY_AQUI';
+              addText('Autenticação', 14, true, colorDanger);
+              addText('Todas as requisições devem incluir o header X-API-Key com sua chave de API.', 10, false);
+              addText(`X-API-Key: ${apiKey}`, 9, true, [0, 0, 0]);
+              yPos += sectionSpacing;
+
+              // Endpoints
+              addText('Endpoints Disponíveis', 14, true, colorSuccess);
+              yPos += 5;
+
+              // 1. Criar Recorrência
+              addText('1. Criar Recorrência PIX (Gerar Pagamento)', 12, true, colorPrimary);
+              addText(`POST ${baseUrl}/jornada3`, 10, false, [0, 0, 0]);
+              addText('Cria uma nova recorrência PIX e retorna o QR Code', 9, false, [100, 100, 100]);
+              yPos += 3;
+
+              const jornada3Example = document.getElementById('apiExampleJornada3')?.textContent || 
+                `curl -X POST ${baseUrl}/jornada3 \\\n  -H "X-API-Key: ${apiKey}" \\\n  -H "Content-Type: application/json" \\\n  -d '{...}'`;
+              addText('Exemplo cURL:', 9, true);
+              addText(jornada3Example, 8, false, [50, 50, 50]);
+              yPos += 3;
+
+              const jornada3Body = document.getElementById('apiBodyJornada3')?.textContent || 
+                JSON.stringify({
+                  pixUserId: 1,
+                  cpfDevedor: "12345678901",
+                  nomeDevedor: "JOÃO DA SILVA",
+                  contrato: "63100555",
+                  dataInicial: "2024-01-15",
+                  periodicidade: "MENSAL",
+                  politicaRetentativa: "PERMITE_3R_7D",
+                  valorRec: "99.90",
+                  valorPrimeiroPagamento: "99.90",
+                  chavePixRecebedor: "02429647000169",
+                  nomeRecebedor: "VIDA OURO",
+                  cidadeRecebedor: "BELO HORIZONTE"
+                }, null, 2);
+              addText('Body JSON:', 9, true);
+              addText(jornada3Body, 8, false, [50, 50, 50]);
+              yPos += sectionSpacing;
+
+              // 2. Consultar Recorrência
+              addText('2. Consultar Recorrência', 12, true, colorSuccess);
+              addText(`GET ${baseUrl}/recorrencia/:idRec?pixUserId=:userId&txid=:txid`, 10, false, [0, 0, 0]);
+              addText('Consulta o status e detalhes de uma recorrência específica', 9, false, [100, 100, 100]);
+              yPos += 3;
+              const recorrenciaExample = `curl -X GET "${baseUrl}/recorrencia/123?pixUserId=1&txid=E12345678202401151234567890123456" \\\n  -H "X-API-Key: ${apiKey}"`;
+              addText('Exemplo cURL:', 9, true);
+              addText(recorrenciaExample, 8, false, [50, 50, 50]);
+              yPos += sectionSpacing;
+
+              // 3. Obter QR Code
+              addText('3. Obter QR Code de uma Transação', 12, true, colorWarning);
+              addText(`GET ${API_BASE}/pix/qrcode/:txid`, 10, false, [0, 0, 0]);
+              addText('Retorna o QR Code (imagem base64) e código PIX copia e cola', 9, false, [100, 100, 100]);
+              yPos += 3;
+              const qrcodeExample = `curl -X GET "${API_BASE}/pix/qrcode/E12345678202401151234567890123456" \\\n  -H "X-API-Key: ${apiKey}"`;
+              addText('Exemplo cURL:', 9, true);
+              addText(qrcodeExample, 8, false, [50, 50, 50]);
+              yPos += sectionSpacing;
+
+              // 4. Listar Transações
+              addText('4. Listar Transações (Gerenciar)', 12, true, [167, 139, 250]);
+              addText(`GET ${API_BASE}/transactions?pixUserId=:userId&status=:status&limit=:limit&offset=:offset`, 10, false, [0, 0, 0]);
+              addText('Lista todas as transações com filtros opcionais', 9, false, [100, 100, 100]);
+              yPos += 3;
+              const transactionsExample = `curl -X GET "${API_BASE}/transactions?pixUserId=1&status=ATIVA&limit=100" \\\n  -H "X-API-Key: ${apiKey}"`;
+              addText('Exemplo cURL:', 9, true);
+              addText(transactionsExample, 8, false, [50, 50, 50]);
+              yPos += sectionSpacing;
+
+              // Campos Obrigatórios
+              addText('Campos Obrigatórios para Criar Recorrência', 14, true, colorWarning);
+              const campos = [
+                'pixUserId: ID do usuário PIX (já vinculado à sua API Key)',
+                'cpfDevedor: CPF do devedor (11 dígitos, somente números)',
+                'nomeDevedor: Nome completo do devedor (máx. 140 caracteres)',
+                'contrato: Número do contrato (máx. 35 caracteres)',
+                'dataInicial: Data do primeiro pagamento (formato: YYYY-MM-DD)',
+                'periodicidade: DIARIA, SEMANAL, QUINZENAL, MENSAL ou ANUAL',
+                'politicaRetentativa: PERMITE_3R_7D (padrão) ou PADRAO',
+                'valorRec: Valor da recorrência (decimal, ex: 99.90)',
+                'valorPrimeiroPagamento: Valor do primeiro pagamento (decimal)',
+                'chavePixRecebedor: Chave PIX do recebedor',
+                'nomeRecebedor: Nome do recebedor (máx. 140 caracteres)',
+                'cidadeRecebedor: Cidade do recebedor (máx. 140 caracteres)'
+              ];
+              campos.forEach(campo => {
+                addText(`• ${campo}`, 9, false, [0, 0, 0]);
+              });
+              yPos += sectionSpacing;
+
+              // Passo a Passo
+              addText('Passo a Passo de Integração', 14, true, colorDanger);
+              const passos = [
+                `1. Configure a Base URL: Use ${baseUrl} como base para todas as requisições.`,
+                `2. Adicione o Header de Autenticação: Inclua X-API-Key: ${apiKey} em todas as requisições.`,
+                `3. Para Gerar Pagamentos: Use POST ${baseUrl}/jornada3 com os dados do devedor e valores.`,
+                `4. Para Gerenciar Transações: Use GET ${API_BASE}/transactions para listar, filtrar e consultar.`,
+                `5. Para Obter QR Codes: Use GET ${API_BASE}/pix/qrcode/:txid para recuperar QR Codes.`
+              ];
+              passos.forEach(passo => {
+                addText(passo, 9, false, [0, 0, 0]);
+              });
+              yPos += sectionSpacing;
+
+              // Estrutura de Resposta
+              addText('Estrutura de Resposta', 14, true, colorPrimary);
+              addText('Todas as respostas seguem o formato:', 10, false);
+              addText('{ "success": true, "data": { ... } }', 9, false, [50, 50, 50]);
+              addText('Em caso de erro:', 10, false);
+              addText('{ "success": false, "error": "Mensagem de erro" }', 9, false, [50, 50, 50]);
+              yPos += sectionSpacing;
+
+              // Dicas
+              addText('Dicas Importantes', 14, true, colorSuccess);
+              const dicas = [
+                '• Mantenha sua API Key segura e nunca a exponha em código frontend',
+                '• Use HTTPS em produção para proteger as requisições',
+                '• O QR Code é gerado automaticamente após criar a recorrência',
+                '• Você pode consultar o status de uma recorrência a qualquer momento',
+                '• Use filtros na listagem de transações para melhor performance',
+                '• A API retorna imagens QR Code em formato base64 (data URL)'
+              ];
+              dicas.forEach(dica => {
+                addText(dica, 9, false, [0, 0, 0]);
+              });
+
+              // Rodapé
+              doc.setPage(doc.internal.getNumberOfPages());
+              yPos = pageHeight - 20;
+              doc.setTextColor(150, 150, 150);
+              doc.setFontSize(8);
+              doc.text(`Documentação gerada em ${new Date().toLocaleString('pt-BR')} - PIX API`, pageWidth / 2, yPos, { align: 'center' });
+
+              // Salvar PDF
+              const fileName = `documentacao-api-pix-${new Date().toISOString().split('T')[0]}.pdf`;
+              doc.save(fileName);
+              showToast('Documentação baixada com sucesso!', 'success');
+            } catch (error) {
+              console.error('Erro ao gerar PDF:', error);
+              showToast('Erro ao gerar PDF. Verifique se a biblioteca jsPDF está carregada.', 'error');
+            }
+          });
+        }
+
+        // ===== PWA - Service Worker e Instalação =====
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then((registration) => {
+                console.log('✅ Service Worker registrado:', registration.scope);
+                
+                // Verificar atualizações periodicamente
+                setInterval(() => {
+                  registration.update();
+                }, 60000); // A cada 1 minuto
+              })
+              .catch((error) => {
+                console.error('❌ Erro ao registrar Service Worker:', error);
+              });
+          });
+        }
+
+        // Botão de instalação PWA
+        let deferredPrompt;
+        const installButton = document.createElement('button');
+        installButton.id = 'installPWA';
+        installButton.className = 'btn btn-primary btn-small';
+        installButton.innerHTML = '📱 Instalar App';
+        installButton.style.display = 'none';
+        installButton.style.position = 'fixed';
+        installButton.style.bottom = '20px';
+        installButton.style.right = '20px';
+        installButton.style.zIndex = '1000';
+        document.body.appendChild(installButton);
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          installButton.style.display = 'block';
+        });
+
+        installButton.addEventListener('click', async () => {
+          if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`Instalação: ${outcome}`);
+            deferredPrompt = null;
+            installButton.style.display = 'none';
+          }
+        });
+
+        // ===== Atualização em Tempo Real =====
+        let realtimeUpdateInterval = null;
+        let lastUpdateTime = null;
+
+        function startRealtimeUpdates() {
+          // Atualizar a cada 5 segundos
+          if (realtimeUpdateInterval) {
+            clearInterval(realtimeUpdateInterval);
+          }
+
+          realtimeUpdateInterval = setInterval(async () => {
+            const currentSection = document.querySelector('.section.active')?.id;
+            
+            if (currentSection === 'dashboardSection') {
+              await loadDashboard();
+            } else if (currentSection === 'usersSection') {
+              await loadPixUsers();
+            } else if (currentSection === 'transactionsSection') {
+              await loadTransactions();
+            } else if (currentSection === 'apiKeysSection') {
+              await loadApiKeys();
+            }
+          }, 5000); // Atualizar a cada 5 segundos
+
+          console.log('✅ Atualização em tempo real ativada (5s)');
+        }
+
+        function stopRealtimeUpdates() {
+          if (realtimeUpdateInterval) {
+            clearInterval(realtimeUpdateInterval);
+            realtimeUpdateInterval = null;
+          }
+        }
+
+        // Iniciar atualizações quando a página carregar
+        window.addEventListener('load', () => {
+          startRealtimeUpdates();
+        });
+
+        // Pausar quando a aba não estiver visível (economizar recursos)
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) {
+            stopRealtimeUpdates();
+          } else {
+            startRealtimeUpdates();
+          }
+        });
+
+        // Indicador de atualização em tempo real
+        const realtimeIndicator = document.createElement('div');
+        realtimeIndicator.id = 'realtimeIndicator';
+        realtimeIndicator.innerHTML = '<span class="status-dot" style="background: #22c55e; animation: pulse 2s infinite;"></span> <span style="font-size: 11px;">Tempo Real</span>';
+        realtimeIndicator.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 8px 12px; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 999px; display: flex; align-items: center; gap: 6px; z-index: 1000; font-size: 11px; color: var(--text);';
+        document.body.appendChild(realtimeIndicator);
+
+        // Adicionar animação de pulso
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `;
+        document.head.appendChild(style);
+      })();
+    </script>
   </body>
-</html>
+  </html>
