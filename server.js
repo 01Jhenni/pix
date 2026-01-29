@@ -28,7 +28,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 async function ensureAdminExists() {
   try {
     const { getAuthUserByEmail, getAuthUserByUsername, createAuthUser } = await import('./database/sqlite-db.js');
-    const bcrypt = (await import('bcryptjs')).default;
+    const bcrypt = await import('bcryptjs');
     
     const ADMIN_EMAIL = 'admin@admin.com';
     const ADMIN_USERNAME = 'admin';
@@ -41,7 +41,7 @@ async function ensureAdminExists() {
     
     if (!existingByEmail && !existingByUsername) {
       console.log('👤 Criando usuário admin padrão...');
-      const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
+      const passwordHash = await bcrypt.default.hash(ADMIN_PASSWORD, 10);
       createAuthUser({
         username: ADMIN_USERNAME,
         email: ADMIN_EMAIL,
