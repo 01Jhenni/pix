@@ -267,6 +267,8 @@ export async function getOAuthToken(pixUserId) {
       new URLSearchParams({
         grant_type: 'client_credentials',
         scope: 'rec.write rec.read payloadlocationrec.write payloadlocationrec.read cobr.write cobr.read cob.write cob.read'
+        // Scopes necessários: rec (recorrência), cobr (cobrança com vencimento), cob (cobrança imediata)
+        // Se der erro 403, verifique se todos estão habilitados no Portal do BB
       }),
       {
         headers: {
