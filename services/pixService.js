@@ -17,7 +17,7 @@ const __dirname = dirname(__filename);
 const tokenCache = new Map();
 
 // Função para carregar certificados SSL se existirem
-function loadSSLCertificates() {
+export function loadSSLCertificates() {
   // PRIORIDADE 1: Tentar ler de variáveis de ambiente (útil para Terminus/Cloud)
   if (process.env.SSL_CERT && process.env.SSL_KEY) {
     console.log('✅ Certificados SSL encontrados nas variáveis de ambiente!');
