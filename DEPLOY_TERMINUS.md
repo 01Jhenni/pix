@@ -25,7 +25,7 @@ git commit -m "Preparando para deploy no Terminus"
 2. Faça push do código:
 
 ```bash
-git remote add origin https://github.com/seu-usuario/seu-repositorio.git
+git remote add origin https://github.com/01Jhenni/pix.git
 git branch -M main
 git push -u origin main
 ```
@@ -41,9 +41,19 @@ git push -u origin main
 5. Configure:
    - **Nome do projeto**: `pix-jornada3`
    - **Branch**: `main` ou `master`
-   - **Build Command**: `npm install && npm run build` (se usar build) ou apenas `npm install`
+   - **Build Command**: `npm install` (ou `npm ci` para instalação limpa)
    - **Start Command**: `npm start`
    - **Porta**: Deixe vazio (Terminus usa variável PORT automaticamente)
+   
+   **IMPORTANTE**: O `better-sqlite3` precisa ser compilado. Se o build falhar, adicione no Build Command:
+   ```
+   npm install --build-from-source
+   ```
+   
+   Ou configure variáveis de ambiente no Terminus:
+   ```
+   npm_config_build_from_source=true
+   ```
 
 #### Opção B: Via CLI do Terminus (se disponível)
 
@@ -204,6 +214,13 @@ pm2 start ecosystem.config.js
 ### Erro: "Build failed"
 - Verifique os logs de build no Terminus
 - Confirme que todas as dependências estão em `dependencies` (não `devDependencies`)
+- Se o erro for com `better-sqlite3`, tente adicionar no Build Command: `npm install --build-from-source`
+- Ou configure a variável de ambiente: `npm_config_build_from_source=true`
+
+### Erro: "Cannot find package 'better-sqlite3'"
+- Execute `npm install` novamente no servidor
+- Verifique se o Build Command está configurado corretamente: `npm install`
+- Se persistir, tente: `npm install --build-from-source better-sqlite3`
 
 ## 📞 Suporte
 

@@ -24,9 +24,14 @@ SSL_PASSPHRASE=<senha se necessário> (opcional)
 
 No dashboard do Terminus, configure:
 
-- **Build Command**: `npm install`
+- **Build Command**: `npm install` (ou `npm install --build-from-source` se houver erro com better-sqlite3)
 - **Start Command**: `npm start`
 - **Porta**: Deixe vazio (usa PORT automático)
+
+**IMPORTANTE**: Se o build falhar com erro de `better-sqlite3`, adicione a variável de ambiente:
+```
+npm_config_build_from_source=true
+```
 
 ### 3️⃣ Fazer Deploy
 
@@ -79,6 +84,12 @@ No dashboard do Terminus, verifique os logs:
 - Verifique se copiou os certificados completos (com BEGIN/END)
 - Confirme que não há espaços extras nas variáveis de ambiente
 - Tente colar novamente os certificados
+
+❌ Se aparecer erro "Cannot find package 'better-sqlite3'":
+- Verifique se o Build Command está configurado: `npm install`
+- Tente usar: `npm install --build-from-source`
+- Ou adicione variável de ambiente: `npm_config_build_from_source=true`
+- Verifique os logs de build no Terminus
 
 ## 📞 Suporte
 
