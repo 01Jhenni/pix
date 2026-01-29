@@ -238,6 +238,23 @@ export async function getOAuthToken(pixUserId) {
     throw new Error('Usuário PIX não encontrado ou inativo');
   }
 
+  if (!user.ativo) {
+    throw new Error('Usuário PIX está inativo');
+  }
+
+  // Validar campos obrigatórios
+  if (!user.oauth_url) {
+    throw new Error('URL OAuth não configurada para este usuário PIX');
+  }
+
+  if (!user.basic_auth_base64) {
+    throw new Error('Credencial Basic Auth não configurada para este usuário PIX');
+  }
+
+  if (!user.gw_app_key) {
+    throw new Error('GW App Key não configurada para este usuário PIX');
+  }
+
   // Verificar cache
   const cached = tokenCache.get(pixUserId);
   if (cached && cached.expiresAt > Date.now()) {
@@ -272,16 +289,43 @@ export async function getOAuthToken(pixUserId) {
 
     return token;
   } catch (error) {
-    console.error('Erro ao obter token OAuth:', error.response?.data || error.message);
-    const errorMsg = error.response?.data?.error_description || error.response?.data?.message || error.message;
+    console.error('Erro ao obter token OAuth:', {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+      status: error.response?.status,
+      statusText: error.response?.statusText
+    });
+    
+    // Capturar mensagem de erro de forma mais completa
+    let errorMsg = '';
+    if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        errorMsg = error.response.data;
+      } else if (error.response.data.error_description) {
+        errorMsg = error.response.data.error_description;
+      } else if (error.response.data.message) {
+        errorMsg = error.response.data.message;
+      } else if (error.response.data.error) {
+        errorMsg = error.response.data.error;
+      } else {
+        errorMsg = JSON.stringify(error.response.data);
+      }
+    } else if (error.message) {
+      errorMsg = error.message;
+    } else {
+      errorMsg = 'Erro desconhecido ao obter token OAuth';
+    }
+    
     const errorCode = error.code || '';
     const errorString = String(error.message || '');
+    const statusCode = error.response?.status;
     
     // Detectar erro de certificado SSL (bad certificate = alert 42)
     const isSSLError = errorMsg.includes('SSL') || errorMsg.includes('certificate') || errorMsg.includes('bad certificate') || 
         errorCode.includes('CERT') || errorCode.includes('UNABLE_TO_VERIFY_LEAF_SIGNATURE') ||
         errorString.includes('EPROTO') || errorString.includes('0A000412') || errorString.includes('sslv3 alert bad certificate') ||
-        errorString.includes('SSL alert number 42');
+        errorString.includes('SSL alert number 42') || errorCode === 'EPROTO' || errorCode === 'CERT_HAS_EXPIRED';
     
     if (isSSLError) {
       console.error('⚠️  Erro SSL detectado: bad certificate (alert 42)');
@@ -389,7 +433,38 @@ export async function getOAuthToken(pixUserId) {
       );
     }
     
-    throw new Error(`Falha ao obter token OAuth: ${errorMsg}`);
+    // Montar mensagem de erro mais informativa
+    let finalErrorMsg = `Falha ao obter token OAuth`;
+    
+    if (statusCode) {
+      finalErrorMsg += ` (HTTP ${statusCode})`;
+    }
+    
+    if (errorMsg) {
+      // Limitar tamanho da mensagem para não cortar
+      const maxLength = 200;
+      const truncatedMsg = errorMsg.length > maxLength 
+        ? errorMsg.substring(0, maxLength) + '...' 
+        : errorMsg;
+      finalErrorMsg += `: ${truncatedMsg}`;
+    }
+    
+    if (errorCode) {
+      finalErrorMsg += ` [${errorCode}]`;
+    }
+    
+    // Adicionar informações úteis para debug
+    if (error.response?.status === 401) {
+      finalErrorMsg += '. Verifique as credenciais (gw_app_key e basic_auth_base64) do usuário PIX.';
+    } else if (error.response?.status === 403) {
+      finalErrorMsg += '. Acesso negado. Verifique as permissões da aplicação no Banco do Brasil.';
+    } else if (error.response?.status === 404) {
+      finalErrorMsg += '. URL OAuth não encontrada. Verifique a URL configurada.';
+    } else if (errorCode === 'ECONNREFUSED' || errorCode === 'ETIMEDOUT') {
+      finalErrorMsg += '. Não foi possível conectar ao servidor OAuth. Verifique a conectividade e a URL.';
+    }
+    
+    throw new Error(finalErrorMsg);
   }
 }
 
