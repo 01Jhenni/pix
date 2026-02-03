@@ -534,4 +534,3 @@ publicRouter.get('/recorrencia/:idRec', async (req, res) => {
 
 export { publicRouter };
 export default router;
-

@@ -41,3 +41,5 @@ No `.env` (pasta `/root/pix`):
 
 - Abra `https://pix.masterclassic.com.br/api/version` — deve retornar JSON com `version`, `build`, `bbOAuthTokenLoaded`.
 - Se retornar 404 ou 502: servidor com código antigo ou app caiu; rode de novo o bloco "No servidor" acima.
+
+**Se o log mostrar "SyntaxError: Unexpected token '}'":** no servidor rode `node --check server.js` (na pasta `/root/pix`). Se falhar, a mensagem indica o arquivo com erro. Corrija ou atualize o código com `git fetch origin main` e `git reset --hard origin/main`.
