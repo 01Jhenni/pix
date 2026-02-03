@@ -537,9 +537,12 @@ export async function getOAuthToken(pixUserId, overrideToken) {
       finalErrorMsg += '\n   - Verifique se a URL está correta: https://oauth.bb.com.br/oauth/token';
       finalErrorMsg += '\n   - Para sandbox: https://oauth.sandbox.bb.com.br/oauth/token';
     } else if (statusCode === 429) {
-      finalErrorMsg += '\n\n💡 429 = rate limit (Cloudflare/BB). O app já tentou novamente após 15s e 30s.';
-      finalErrorMsg += '\n   - Evite muitas requisições seguidas; o token é cacheado (1 token para vários PIX).';
-      finalErrorMsg += '\n   - Se persistir: aguarde alguns minutos ou peça ao BB liberação do IP do servidor.';
+      finalErrorMsg += '\n\n💡 429 = rate limit (Cloudflare/BB). Para parar de chamar o OAuth:';
+      finalErrorMsg += '\n   1. No servidor, edite o .env (na pasta do projeto, ex: /root/pix/.env)';
+      finalErrorMsg += '\n   2. Adicione uma linha: BB_OAUTH_TOKEN=<token_de_acesso>';
+      finalErrorMsg += '\n   3. Obtenha o token: no n8n execute o fluxo e copie o access_token do nó "2. OAuth Token"; ou rode npm run test:oauth em outro PC e copie o token.';
+      finalErrorMsg += '\n   4. Reinicie: pm2 restart pix-system --update-env';
+      finalErrorMsg += '\n   Ou use o campo "Token OAuth BB (opcional)" no formulário Teste PIX e cole o token antes de enviar.';
     } else if (errorCode === 'ECONNREFUSED' || errorCode === 'ETIMEDOUT') {
       finalErrorMsg += '\n\n💡 SOLUÇÃO: Não foi possível conectar ao servidor OAuth.';
       finalErrorMsg += '\n   - Verifique a conectividade com o servidor do BB';

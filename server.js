@@ -7,7 +7,14 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 // Carregar .env do diretório do app (não depende do cwd do PM2)
-dotenv.config({ path: path.join(__dirname, '.env') });
+const envPath = path.join(__dirname, '.env');
+dotenv.config({ path: envPath });
+// Log imediato: se BB_OAUTH_TOKEN não aparecer aqui após restart, o .env não tem a variável ou está em outro path
+if (process.env.BB_OAUTH_TOKEN && process.env.BB_OAUTH_TOKEN.trim()) {
+  console.log('✅ [startup] BB_OAUTH_TOKEN carregado do .env — OAuth não será chamado (evita 429).');
+} else {
+  console.log('⚠️  [startup] BB_OAUTH_TOKEN não está no .env — adicione e reinicie para evitar 429. Arquivo .env:', envPath);
+}
 
 import express from 'express';
 import cors from 'cors';
