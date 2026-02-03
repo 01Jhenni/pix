@@ -42,9 +42,7 @@ router.post('/jornada3', async (req, res) => {
     }
 
     if (!pixUserId) {
-      return res.status(400).json({ 
-        error: 'pixUserId é obrigatório' 
-      });
+      return res.status(400).json({ error: 'pixUserId é obrigatório' });
     }
 
     // Validações básicas
@@ -56,9 +54,8 @@ router.post('/jornada3', async (req, res) => {
 
     for (const campo of camposObrigatorios) {
       if (!dados[campo]) {
-        return res.status(400).json({ 
-          error: `Campo obrigatório ausente: ${campo}` 
-        });
+        const errMsg = 'Campo obrigatório ausente: ' + campo;
+        return res.status(400).json({ error: errMsg });
       }
     }
 
@@ -148,11 +145,11 @@ router.post('/jornada3', async (req, res) => {
     const msg = error.message || 'Erro ao processar Jornada 3';
     const isSSL = /certificado|SSL|cert\.pem|key\.pem|bad certificate/i.test(msg);
     const is429 = /429|Too Many Requests|rate limit/i.test(msg);
-    const isToken = /token|OAuth|401|403/i.test(msg);
+    const isToken = /token|OAuth|401|403|credencial|identificador/i.test(msg);
     const code = isSSL ? 'SSL_CERTIFICATE_REQUIRED' : is429 || isToken ? 'OAUTH_ERROR' : 'JORNADA3_ERROR';
     let errorMsg = msg;
-    if (is429 || (isToken && /429|HTML/i.test(msg))) {
-      errorMsg = msg + ' Use o campo "Token OAuth BB (opcional)" nesta tela e cole um token obtido com npm run test:oauth (em outro ambiente) ou do n8n.';
+    if (is429 || isToken) {
+      errorMsg = msg + ' Cole o token no campo "Token OAuth BB (opcional)" no topo deste formulário (token do n8n, nó "2. OAuth Token", ou npm run test:oauth) e envie de novo.';
     }
     res.status(500).json({ 
       error: errorMsg,

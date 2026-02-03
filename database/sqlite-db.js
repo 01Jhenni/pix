@@ -622,7 +622,7 @@ export function createSession({ user_id, token, expires_at }) {
 }
 
 export function getSessionByToken(token) {
-  const stmt = db.prepare('SELECT * FROM sessions WHERE token = ? AND expires_at > datetime("now")');
+  const stmt = db.prepare("SELECT * FROM sessions WHERE token = ? AND expires_at > datetime('now')");
   return stmt.get(token) || null;
 }
 

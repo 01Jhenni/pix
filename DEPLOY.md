@@ -21,10 +21,52 @@ git push origin main
 SSH no servidor, vá na pasta do projeto e atualize:
 
 ```bash
-cd /caminho/do/projeto/pix
+cd /root/pix
 git pull origin main
 npm install
 ```
+
+**Se o `git pull` der erro "Your local changes would be overwritten" (ex.: em `scripts/check-bb-token.js`):** descarte as alterações locais **e** force o repositório a ficar igual ao remoto, depois puxe e reinicie:
+
+```bash
+cd /root/pix
+git checkout -- .
+git clean -fd
+git fetch origin main
+git reset --hard origin/main
+npm install
+pm2 restart pix-system --update-env
+```
+
+- **`git reset --hard origin/main`** deixa a pasta exatamente igual ao que está no GitHub (qualquer alteração local é perdida).
+- Se preferir não usar `reset --hard`, use só descarte do arquivo que aparece no erro: `git checkout -- scripts/check-bb-token.js` e depois `git pull origin main`.
+
+Assim o servidor fica com o código mais recente (incluindo o uso de `BB_OAUTH_TOKEN` no startup).
+
+---
+
+## 2.1. Confirmar que está atualizado (não dá mais o mesmo erro)
+
+**No servidor:** depois de `git pull` e `pm2 restart`, confira:
+
+1. **Build do servidor:** abra no navegador `https://pix.masterclassic.com.br/api/version`. Deve retornar algo como `{"version":"2.0.0","build":"2025-01-29T12-30-00","bbOAuthTokenLoaded":true}`. O **build** muda a cada restart do PM2 — se for recente, o servidor está com o código novo.
+2. **Na página do painel:** no canto inferior direito aparece **"Build 2025-01-29T..."**. Se esse horário for de depois do último deploy, a página está nova.
+3. **Log do PM2:** `pm2 logs pix-system --out --lines 20`. Deve aparecer **`[startup] BB_OAUTH_TOKEN carregado do .env`** (se o token estiver no .env).
+
+**Se `/api/version` retornar `{"error":"API endpoint not found"}`:** o servidor está com **código antigo**. No servidor rode: `cd /root/pix && git fetch origin main && git reset --hard origin/main && pm2 restart pix-system --update-env`. Depois abra de novo `https://pix.masterclassic.com.br/api/version` — deve retornar JSON com `version`, `build` e `bbOAuthTokenLoaded`.
+
+**Se aparecer "502 Bad Gateway" (Nginx):** o Nginx está na frente do app e **não está recebendo resposta** do Node (PM2). No servidor confira: (1) `pm2 status` — o processo `pix-system` está **online**? (2) `pm2 logs pix-system --lines 30` — o app subiu sem erro? (3) Se o app caiu, rode `cd /root/pix && npm install && pm2 restart pix-system --update-env`. (4) Confirme que o Nginx faz proxy para o mesmo endereço/porta em que o app escuta (ex.: `proxy_pass http://127.0.0.1:3000`).
+
+**Se aparecer "no such column: now" (SQLite) em `/api/auth/me`:** foi corrigido na base: a query de sessão usa `datetime('now')` com aspas simples. Atualize o código no servidor (`git pull` ou `git reset --hard origin/main`) e reinicie o PM2.
+
+**Se aparecer "SyntaxError: Unexpected token '}'":** algum arquivo no servidor pode estar quebrado ou desatualizado. No servidor rode: `cd /root/pix && git fetch origin main && git reset --hard origin/main && node -c server.js`. Se `node -c server.js` falhar, a mensagem indica o arquivo com erro; se passar, reinicie com `pm2 restart pix-system --update-env`.
+
+**Se aparecer "Falha ao obter token OAuth (HTTP 401): Identificador ou credenciais inválidos":** o app está chamando o OAuth do BB e as credenciais (no banco) estão erradas ou de outro ambiente. **Solução rápida:** defina **BB_OAUTH_TOKEN** no `.env` do servidor (token do n8n, nó "2. OAuth Token", ou `npm run test:oauth`) e reinicie — assim o app **não** chama o OAuth. **Alternativa:** atualize as credenciais no banco com as de **produção**: `BasicToken=... APIKey=... node scripts/set-pix-credentials.js` (use os mesmos valores do n8n Jornada 3 - Produção).
+
+**Se continuar dando o mesmo erro:**
+
+- **Navegador:** faça **atualização forçada** para não usar cache: **Ctrl+Shift+R** (Windows/Linux) ou **Cmd+Shift+R** (Mac). Ou abra o site em aba anônima.
+- **Servidor:** confirme que o `git pull` rodou sem erro e que o PM2 reiniciou: `cd /root/pix && git log -1 --oneline && pm2 restart pix-system --update-env`.
 
 ---
 
@@ -130,6 +172,42 @@ pm2 logs pix-system --lines 25
 
 No log deve aparecer **`BB_OAUTH_TOKEN definido`** ou **`BB_OAUTH_TOKEN carregado do .env`**. A partir daí o app não chama mais o OAuth e o 429 para.
 
+### Se ainda aparecer 429 no log de erro
+
+1. **Confirmar que o servidor está com o código novo**  
+   O app só para de chamar o OAuth se o código que usa `BB_OAUTH_TOKEN` estiver no servidor. Rode no servidor:
+
+   ```bash
+   cd /root/pix
+   grep -n "BB_OAUTH_TOKEN" services/pixService.js | head -5
+   ```
+
+   Se não aparecer nenhuma linha, o código está antigo. Ajuste o git e puxe de novo:
+
+   ```bash
+   git checkout -- .
+   git pull origin main
+   pm2 restart pix-system --update-env
+   ```
+
+2. **Olhar o log de saída (out), não só o de erro**  
+   A mensagem de startup aparece no **out**:
+
+   ```bash
+   pm2 logs pix-system --out --lines 50
+   ```
+
+   Procure por **`[startup] BB_OAUTH_TOKEN carregado do .env`**.  
+   Se aparecer **`[startup] BB_OAUTH_TOKEN não está no .env`**, o processo não está lendo o `.env` (confira o caminho que aparece no log e se o `.env` está nessa pasta).
+
+3. **Reiniciar de novo após o pull**  
+   Depois de um `git pull` bem-sucedido, sempre rode:
+
+   ```bash
+   pm2 restart pix-system --update-env
+   pm2 logs pix-system --out --lines 30
+   ```
+
 ---
 
-**Resumo:** No PC: `git add .` → `commit` → `push`. No servidor: `git pull` → `.env` com `BasicToken` e `APIKey` → `node scripts/set-pix-credentials.js` → se der 429, adicionar `BB_OAUTH_TOKEN` no `.env` → `pm2 restart pix-system --update-env`.
+**Resumo:** No PC: `git add .` → `commit` → `push`. No servidor: `git pull` (resolvendo conflitos com `git checkout -- .` se precisar) → `.env` com `BasicToken`, `APIKey` e `BB_OAUTH_TOKEN` → `node scripts/set-pix-credentials.js` → `pm2 restart pix-system --update-env`. Verificar no log **out** a mensagem `[startup] BB_OAUTH_TOKEN carregado`.

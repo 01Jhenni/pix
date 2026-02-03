@@ -30,7 +30,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Função para criar admin automaticamente se não existir
 async function ensureAdminExists() {
@@ -82,6 +81,16 @@ import profileRoutes from './routes/profiles.js';
 import apiKeyRoutes from './routes/api-keys.js';
 import { publicRouter as pixPublicRoutes } from './routes/pix.js';
 
+// Rota de versão primeiro (se retornar 404 no servidor = código antigo, faça git pull + pm2 restart)
+const BUILD_ID = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: '2.0.0',
+    build: BUILD_ID,
+    bbOAuthTokenLoaded: !!(process.env.BB_OAUTH_TOKEN && process.env.BB_OAUTH_TOKEN.trim())
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/pix', pixRoutes);
 app.use('/api/users', userRoutes);
@@ -94,11 +103,25 @@ app.use('/api/v1/pix', pixPublicRoutes);
 
 const publicPath = path.join(__dirname, 'public');
 const publicIndexPath = path.join(__dirname, 'public', 'index.html');
+
+// Health e versão antes do catch-all (senão nunca são alcançados)
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '2.0.0',
+    build: BUILD_ID
+  });
+});
+
 if (fs.existsSync(publicPath)) {
-  app.use(express.static(publicPath, {
-    index: 'index.html',
-    maxAge: '1h' // Cache estático por 1 hora
-  }));
+  app.get(['/', '/index.html'], (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.sendFile('index.html', { root: publicPath });
+  });
+  app.use(express.static(publicPath, { index: false, maxAge: '1h' }));
   console.log('✅ Frontend estático encontrado em public/');
 } else {
   console.warn('⚠️  Pasta public/ não encontrada. Apenas API estará disponível.');
@@ -110,19 +133,11 @@ app.get('*', (req, res) => {
     return;
   }
   if (fs.existsSync(publicIndexPath)) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.sendFile('index.html', { root: publicPath });
     return;
   }
   res.json({ message: 'API PIX', version: '2.0.0' });
-});
-
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    version: '2.0.0'
-  });
 });
 
 const HOST = process.env.HOST || '0.0.0.0'; // Escutar em todas as interfaces para aceitar conexões externas

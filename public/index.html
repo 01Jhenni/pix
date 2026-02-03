@@ -1777,8 +1777,8 @@
               <div class="card">
                 <!-- AVISO 429 + CAMPO TOKEN: sempre visível no topo -->
                 <div id="tokenOauthBox" style="display: block !important; visibility: visible !important; margin-bottom: 16px; padding: 14px 16px; background: linear-gradient(135deg, rgba(234,179,8,0.15) 0%, rgba(234,88,12,0.08) 100%); border: 2px solid rgba(234,179,8,0.5); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #eab308;">⚠️ Erro 429? Cole o Token OAuth aqui</div>
-                  <p style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Se aparecer &quot;Falha ao obter token OAuth (HTTP 429)&quot;, obtenha um token com <code style="background: rgba(0,0,0,0.2); padding: 2px 6px;">npm run test:oauth</code> no PC ou do n8n e cole abaixo.</p>
+                  <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #eab308;">⚠️ Erro 429 ou 401 no OAuth? Cole o Token aqui</div>
+                  <p style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Se aparecer &quot;Falha ao obter token OAuth (HTTP 429 ou 401)&quot;, obtenha o <strong>access_token</strong> no n8n (nó &quot;2. OAuth Token&quot;) ou com <code style="background: rgba(0,0,0,0.2); padding: 2px 6px;">npm run test:oauth</code> no PC e cole abaixo. Depois envie o formulário de novo.</p>
                   <input type="text" id="testOauthToken" name="oauthToken" class="form-input" placeholder="Cole o token OAuth do BB aqui (opcional)" autocomplete="off" style="width: 100%; max-width: 100%; box-sizing: border-box;" />
                 </div>
 
@@ -2576,7 +2576,7 @@
           const box = document.createElement('div');
           box.id = 'tokenOauthBox';
           box.setAttribute('style', 'display: block !important; visibility: visible !important; margin-bottom: 16px; padding: 14px 16px; background: linear-gradient(135deg, rgba(234,179,8,0.15) 0%, rgba(234,88,12,0.08) 100%); border: 2px solid rgba(234,179,8,0.5); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);');
-          box.innerHTML = '<div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #eab308;">⚠️ Erro 429? Cole o Token OAuth aqui</div><p style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Se aparecer &quot;Falha ao obter token OAuth (HTTP 429)&quot;, obtenha um token com <code style="background: rgba(0,0,0,0.2); padding: 2px 6px;">npm run test:oauth</code> no PC ou do n8n e cole abaixo.</p><input type="text" id="testOauthToken" name="oauthToken" class="form-input" placeholder="Cole o token OAuth do BB aqui (opcional)" autocomplete="off" style="width: 100%; max-width: 100%; box-sizing: border-box;" />';
+          box.innerHTML = '<div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #eab308;">⚠️ Erro 429 ou 401? Cole o Token OAuth aqui</div><p style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Obtenha o access_token no n8n (nó 2. OAuth Token) ou com npm run test:oauth e cole abaixo.</p><input type="text" id="testOauthToken" name="oauthToken" class="form-input" placeholder="Cole o token OAuth do BB aqui (opcional)" autocomplete="off" style="width: 100%; max-width: 100%; box-sizing: border-box;" />';
           card.insertBefore(box, card.firstChild);
         })();
 
@@ -3258,6 +3258,25 @@
           }
         `;
         document.head.appendChild(style);
+      })();
+
+      // Mostrar versão/build para confirmar que a página e o servidor estão atualizados
+      (async function showVersion() {
+        try {
+          const res = await fetch('/api/version', { cache: 'no-store' });
+          const data = res.ok ? await res.json() : {};
+          const build = data.build || '?';
+          const tokenOk = data.bbOAuthTokenLoaded === true;
+          console.log('PIX Servidor:', { build, bbOAuthTokenNoServidor: tokenOk ? 'sim' : 'não' });
+          const badge = document.createElement('div');
+          badge.id = 'versionBadge';
+          badge.title = 'Build do servidor (muda após deploy/restart). BB_OAUTH_TOKEN: ' + (tokenOk ? 'sim' : 'não');
+          badge.textContent = 'Build ' + build;
+          badge.style.cssText = 'position: fixed; bottom: 10px; right: 10px; padding: 4px 8px; background: rgba(15,23,42,0.9); border: 1px solid rgba(148,163,184,0.3); border-radius: 6px; font-size: 10px; color: var(--muted); z-index: 9999; cursor: help;';
+          document.body.appendChild(badge);
+        } catch (e) {
+          console.warn('Não foi possível obter /api/version:', e.message);
+        }
       })();
     </script>
   </body>
