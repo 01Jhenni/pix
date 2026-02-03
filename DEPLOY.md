@@ -23,13 +23,14 @@ cd /root/pix
 git fetch origin main
 git reset --hard origin/main
 npm install
+node scripts/fix-pixservice-syntax.js
 node --check server.js
 pm2 restart pix-system --update-env
 pm2 logs pix-system --lines 20
 ```
 
 (Se a branch for `master`: use `origin master` no `git fetch`.)  
-Se der **SyntaxError**, rode `node scripts/check-syntax.js` no servidor para ver arquivo e linha; em geral o servidor não recebeu a correção — faça push do PC (seção "No PC").
+O script `fix-pixservice-syntax.js` remove a linha `};` extra que causa o SyntaxError. Se o script não existir no servidor, faça primeiro o push do PC (seção "No PC") e depois o pull.
 
 ---
 
@@ -47,7 +48,4 @@ No `.env` (pasta `/root/pix`):
 - Abra `https://pix.masterclassic.com.br/api/version` — deve retornar JSON com `version`, `build`, `bbOAuthTokenLoaded`.
 - Se retornar 404 ou 502: servidor com código antigo ou app caiu; rode de novo o bloco "No servidor" acima.
 
-**Se o log mostrar "SyntaxError: Unexpected token '}'":** o servidor não tem a correção do `pixService.js`.
-
-1. **Primeiro:** No PC faça push (seção "No PC") e no servidor rode de novo o bloco "No servidor".
-2. **Se ainda der erro:** Corrija direto no servidor. Rode: `grep -n "throw new Error(finalErrorMsg)" /root/pix/services/pixService.js` (anote o número da linha, ex.: 553). Abra o arquivo: `nano +554 /root/pix/services/pixService.js` (use linha+1). Apague a linha que contém só `};` ou `}` (a linha *logo abaixo* de `throw new Error(finalErrorMsg);` deve ser só `}` e em seguida a linha com `/**` ou `// getOAuthToken`). Salve (Ctrl+O, Enter, Ctrl+X). Depois: `node --check server.js` e `pm2 restart pix-system --update-env`.
+**Se o log mostrar "SyntaxError: Unexpected token '}'":** no servidor rode: `cd /root/pix && node scripts/fix-pixservice-syntax.js && node --check server.js && pm2 restart pix-system --update-env`. Se o script disser "Arquivo ja esta correto", edite manualmente: `nano /root/pix/services/pixService.js`, vá até a linha após `throw new Error(finalErrorMsg);` e apague a linha que contém só `};`.
