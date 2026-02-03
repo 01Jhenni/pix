@@ -552,6 +552,7 @@ export async function getOAuthToken(pixUserId, overrideToken) {
     
     throw new Error(finalErrorMsg);
 }
+// getOAuthToken fim - so um } acima (fix SyntaxError)
 
 /**
  * Gera TXID único
