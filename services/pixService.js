@@ -8,10 +8,22 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import dotenv from 'dotenv';
 import { getPixUserById, createTransaction, updateTransactionByTxid } from '../database/sqlite-db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Garantir que .env seja carregado pela pasta do projeto (não depende do server.js nem do cwd do PM2)
+const projectRoot = path.resolve(__dirname, '..');
+const envPath = path.join(projectRoot, '.env');
+dotenv.config({ path: envPath });
+// Log único ao carregar: confirma se BB_OAUTH_TOKEN será usado (evita 429)
+if (process.env.BB_OAUTH_TOKEN && process.env.BB_OAUTH_TOKEN.trim()) {
+  console.log('✅ [pixService] BB_OAUTH_TOKEN carregado do .env — OAuth não será chamado.');
+} else {
+  console.log('⚠️  [pixService] BB_OAUTH_TOKEN não encontrado. .env em:', envPath);
+}
 
 // Cache de tokens OAuth por usuário
 const tokenCache = new Map();
@@ -44,13 +56,26 @@ export function loadSSLCertificates() {
     }
   }
 
-  // PRIORIDADE 2: Tentar ler de arquivos locais
-  const certsDir = path.join(__dirname, '..', 'certificates');
-  const certPath = path.join(certsDir, 'cert.pem');
-  // Aceitar tanto key.pem quanto chave.pem
-  const keyPath = fs.existsSync(path.join(certsDir, 'key.pem')) 
-    ? path.join(certsDir, 'key.pem')
-    : path.join(certsDir, 'chave.pem');
+  // PRIORIDADE 2: Tentar ler de arquivos locais (tentar projeto atual e depois cwd)
+  const possibleDirs = [
+    path.join(__dirname, '..', 'certificates'),
+    path.join(process.cwd(), 'certificates'),
+    path.join(process.cwd(), 'pix', 'certificates')
+  ];
+  let certsDir = possibleDirs[0];
+  let certPath = path.join(certsDir, 'cert.pem');
+  let keyPath = path.join(certsDir, 'key.pem');
+  if (!fs.existsSync(keyPath)) keyPath = path.join(certsDir, 'chave.pem');
+  for (const dir of possibleDirs) {
+    const c = path.join(dir, 'cert.pem');
+    const k = fs.existsSync(path.join(dir, 'key.pem')) ? path.join(dir, 'key.pem') : path.join(dir, 'chave.pem');
+    if (fs.existsSync(c) && fs.existsSync(k)) {
+      certsDir = dir;
+      certPath = c;
+      keyPath = k;
+      break;
+    }
+  }
   const caPath = path.join(certsDir, 'ca.pem');
   const passphrasePath = path.join(certsDir, 'passphrase.txt');
 
@@ -61,6 +86,8 @@ export function loadSSLCertificates() {
 
   if (hasCert && hasKey) {
     console.log('✅ Certificados SSL encontrados em arquivos locais! Usando certificados do cliente.');
+    console.log(`   Cert: ${certPath}`);
+    console.log(`   Key:  ${keyPath}`);
     try {
       const cert = fs.readFileSync(certPath, 'utf8');
       const key = fs.readFileSync(keyPath, 'utf8');
@@ -83,15 +110,11 @@ export function loadSSLCertificates() {
       return null;
     }
   } else {
-    console.log('⚠️  Certificados SSL não encontrados. Usando modo sem certificado (pode falhar).');
-    console.log(`   Procurando em: ${certsDir}`);
-    console.log('   Arquivos esperados: cert.pem, key.pem (ou chave.pem), ca.pem (opcional), passphrase.txt (opcional)');
-    console.log('   OU configure variáveis de ambiente: SSL_CERT, SSL_KEY, SSL_CA (opcional), SSL_PASSPHRASE (opcional)');
-    console.log('');
-    console.log('💡 DICA: Se os campos Certificate/Private Key estiverem vazios no n8n:');
-    console.log('   1. Tente a credencial "SSL Certificates account 3"');
-    console.log('   2. Ou verifique o banco de dados do n8n');
-    console.log('   3. Veja GUIA_RAPIDO_CERTIFICADOS.md para mais detalhes');
+    console.log('⚠️  Certificados SSL não encontrados. Usando modo sem certificado (pode falhar na API do BB).');
+    console.log('   Pastas verificadas (coloque cert.pem e key.pem em uma delas):');
+    possibleDirs.forEach((d) => console.log('   - ' + path.resolve(d)));
+    console.log('   OU defina no servidor: SSL_CERT e SSL_KEY (conteúdo dos arquivos, ex.: variáveis no Terminus).');
+    console.log('   Use os certificados da credencial "Vida Ouro" do n8n para gerar QR Code.');
     return null;
   }
 }
@@ -137,44 +160,25 @@ function createHttpsAgent() {
 const httpsAgent = createHttpsAgent();
 
 // Função auxiliar para tentar múltiplas configurações SSL em caso de erro
+// IMPORTANTE: Tentar COM certificado do cliente PRIMEIRO (BB exige mTLS e rejeita sem cert)
 async function tryWithMultipleSSLConfigs(requestFn) {
-  const sslConfigs = [
-    // 1. Sem certificado do cliente, apenas desabilitando validação
-    {
-      rejectUnauthorized: false,
-      requestCert: false,
-      secureProtocol: 'TLSv1_2_method'
-    },
-    // 2. Sem certificado, TLS 1.3
-    {
-      rejectUnauthorized: false,
-      requestCert: false,
-      secureProtocol: 'TLS_method'
-    },
-    // 3. Sem certificado, TLS 1.2 com ciphers específicos
-    {
-      rejectUnauthorized: false,
-      requestCert: false,
-      secureProtocol: 'TLSv1_2_method',
-      ciphers: 'DEFAULT:@SECLEVEL=1'
-    },
-    // 4. Se tiver certificados, tentar sem passphrase
-    ...(sslCerts ? [{
-      cert: sslCerts.cert,
-      key: sslCerts.key,
-      rejectUnauthorized: false,
-      requestCert: true,
-      secureProtocol: 'TLSv1_2_method'
-    }] : []),
-    // 5. Se tiver certificados, tentar com diferentes protocolos
-    ...(sslCerts ? [{
-      cert: sslCerts.cert,
-      key: sslCerts.key,
-      rejectUnauthorized: false,
-      requestCert: true,
-      secureProtocol: 'TLS_method'
-    }] : [])
+  let withCert = [];
+  if (sslCerts) {
+    const base = { cert: sslCerts.cert, key: sslCerts.key, rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' };
+    if (sslCerts.passphrase) base.passphrase = sslCerts.passphrase;
+    if (sslCerts.ca) base.ca = sslCerts.ca;
+    withCert = [
+      { ...base },
+      { ...base, secureProtocol: 'TLS_method' },
+      { cert: sslCerts.cert, key: sslCerts.key, rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' },
+      ...(sslCerts.ca ? [{ cert: sslCerts.cert, key: sslCerts.key, ca: sslCerts.ca, rejectUnauthorized: true, secureProtocol: 'TLSv1_2_method' }] : [])
+    ];
+  }
+  const withoutCert = [
+    { rejectUnauthorized: false, secureProtocol: 'TLSv1_2_method' },
+    { rejectUnauthorized: false, secureProtocol: 'TLS_method' }
   ];
+  const sslConfigs = [...withCert, ...withoutCert];
 
   for (let i = 0; i < sslConfigs.length; i++) {
     try {
@@ -192,8 +196,9 @@ async function tryWithMultipleSSLConfigs(requestFn) {
       if (i === sslConfigs.length - 1) {
         throw new Error(
           `Erro de certificado SSL após ${sslConfigs.length} tentativas. ` +
-          `A API do Banco do Brasil requer certificados SSL válidos do cliente. ` +
-          `Verifique se os certificados estão corretos em: certificates/cert.pem e certificates/key.pem. ` +
+          `A API do BB rejeitou o certificado do cliente (alert 42). ` +
+          `Use os MESMOS arquivos da credencial SSL do n8n (ex.: Vida Ouro): cert.pem e chave.pem em certificates/. ` +
+          `Confirme que o ambiente (produção/homologação) e o gw_app_key batem com a aplicação do certificado. ` +
           `Detalhes: ${retryError.message}`
         );
       }
@@ -230,8 +235,10 @@ axios.interceptors.request.use((config) => {
 
 /**
  * Obtém token OAuth para um usuário PIX
+ * @param {number} pixUserId - ID do usuário PIX
+ * @param {string} [overrideToken] - Token opcional enviado na requisição (evita chamar OAuth quando 429)
  */
-export async function getOAuthToken(pixUserId) {
+export async function getOAuthToken(pixUserId, overrideToken) {
   const user = getPixUserById(pixUserId);
   
   if (!user) {
@@ -240,6 +247,13 @@ export async function getOAuthToken(pixUserId) {
 
   if (!user.ativo) {
     throw new Error('Usuário PIX está inativo');
+  }
+
+  // Token enviado na requisição (frontend): usa direto e evita 429
+  if (overrideToken && String(overrideToken).trim()) {
+    const token = String(overrideToken).trim();
+    tokenCache.set(pixUserId, { token, expiresAt: Date.now() + 50 * 60 * 1000 });
+    return token;
   }
 
   // Validar campos obrigatórios
@@ -261,42 +275,60 @@ export async function getOAuthToken(pixUserId) {
     return cached.token;
   }
 
-  try {
-    const response = await axios.post(
-      user.oauth_url,
-      new URLSearchParams({
-        grant_type: 'client_credentials',
-        scope: 'rec.write rec.read payloadlocationrec.write payloadlocationrec.read cobr.write cobr.read cob.write cob.read'
-        // Escopos necessários conforme Guia Técnico API Pix Automático BB:
-        // - rec.write/read: Recorrências (Jornadas 1-4)
-        // - payloadlocationrec.write/read: Location/QR Code (Jornadas 2-4)
-        // - cob.write/read: Cobrança imediata (Jornada 3)
-        // - cobr.write/read: Cobrança com vencimento (Jornada 4)
-        // Se der erro 403, verifique se todos estão habilitados no Portal do BB
-        // Ver ESCOPOS_OAUTH_BB.md para detalhes completos
-      }),
-      {
-        headers: {
-          'Authorization': `Basic ${user.basic_auth_base64}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        httpsAgent: httpsAgent,
-        timeout: 30000
-      }
-    );
+  // Token manual (env/.env): evita chamar OAuth quando 429 bloqueia (ex.: colar token do n8n ou de um test:oauth que funcionou)
+  const manualToken = process.env.BB_OAUTH_TOKEN;
+  if (manualToken && manualToken.trim()) {
+    const tokenPreview = manualToken.length > 20 ? manualToken.substring(0, 20) + '...' : manualToken;
+    console.log(`ℹ️  Usando token OAuth da variável BB_OAUTH_TOKEN (${manualToken.length} chars) - não chama oauth/token.`);
+    tokenCache.set(pixUserId, { token: manualToken.trim(), expiresAt: Date.now() + 50 * 60 * 1000 }); // 50 min
+    return manualToken.trim();
+  }
+  // Log detalhado para debug
+  const envKeys = Object.keys(process.env).filter(k => k.includes('BB') || k.includes('OAUTH'));
+  console.log(`⚠️  BB_OAUTH_TOKEN não definido neste processo (process.env.BB_OAUTH_TOKEN=${manualToken || 'undefined'}); chamando OAuth (pode dar 429).`);
+  console.log(`   Variáveis BB encontradas no processo: ${envKeys.length > 0 ? envKeys.join(', ') : 'nenhuma'}`);
+  console.log('   Defina BB_OAUTH_TOKEN no .env (mesma pasta do server.js) ou no PM2 ecosystem.config.cjs e reinicie.');
 
-    const token = response.data.access_token;
-    const expiresIn = response.data.expires_in || 3600;
-    
-    // Cache do token (expira 5 minutos antes)
-    tokenCache.set(pixUserId, {
-      token,
-      expiresAt: Date.now() + (expiresIn - 300) * 1000
-    });
+  const oauthPost = () => axios.post(
+    user.oauth_url,
+    new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope: 'rec.write rec.read payloadlocationrec.write payloadlocationrec.read cobr.write cobr.read cob.write cob.read'
+    }),
+    {
+      headers: {
+        'Authorization': `Basic ${user.basic_auth_base64}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      httpsAgent: httpsAgent,
+      timeout: 30000
+    }
+  );
 
-    return token;
-  } catch (error) {
-    const statusCode = error.response?.status;
+  // Retry em 429 (rate limit / Cloudflare): mais tentativas e espera maior para não bloquear testes
+  const backoffSeconds = [0, 15, 30, 60, 120];
+  let lastError;
+  for (let attempt = 0; attempt < backoffSeconds.length; attempt++) {
+    if (attempt > 0) {
+      const wait = backoffSeconds[attempt];
+      console.log(`⏳ 429 rate limit: aguardando ${wait}s antes da tentativa ${attempt + 1}/${backoffSeconds.length}...`);
+      await new Promise(r => setTimeout(r, wait * 1000));
+    }
+    try {
+      const response = await oauthPost();
+      const token = response.data.access_token;
+      const expiresIn = response.data.expires_in || 3600;
+      tokenCache.set(pixUserId, { token, expiresAt: Date.now() + (expiresIn - 300) * 1000 });
+      return token;
+    } catch (error) {
+      lastError = error;
+      if (error.response?.status === 429 && attempt < backoffSeconds.length - 1) continue;
+      break;
+    }
+  }
+
+  const error = lastError;
+  const statusCode = error.response?.status;
     const contentType = error.response?.headers?.['content-type'] || '';
     
     console.error('Erro ao obter token OAuth:', {
@@ -504,6 +536,10 @@ export async function getOAuthToken(pixUserId) {
       finalErrorMsg += '\n\n💡 SOLUÇÃO: URL OAuth não encontrada.';
       finalErrorMsg += '\n   - Verifique se a URL está correta: https://oauth.bb.com.br/oauth/token';
       finalErrorMsg += '\n   - Para sandbox: https://oauth.sandbox.bb.com.br/oauth/token';
+    } else if (statusCode === 429) {
+      finalErrorMsg += '\n\n💡 429 = rate limit (Cloudflare/BB). O app já tentou novamente após 15s e 30s.';
+      finalErrorMsg += '\n   - Evite muitas requisições seguidas; o token é cacheado (1 token para vários PIX).';
+      finalErrorMsg += '\n   - Se persistir: aguarde alguns minutos ou peça ao BB liberação do IP do servidor.';
     } else if (errorCode === 'ECONNREFUSED' || errorCode === 'ETIMEDOUT') {
       finalErrorMsg += '\n\n💡 SOLUÇÃO: Não foi possível conectar ao servidor OAuth.';
       finalErrorMsg += '\n   - Verifique a conectividade com o servidor do BB';
@@ -524,15 +560,16 @@ export function generateTxid() {
 
 /**
  * Cria cobrança imediata
+ * @param {string} [oauthToken] - Token OAuth opcional (evita 429 quando enviado pelo frontend)
  */
-export async function criarCobranca(pixUserId, txid, valor, chavePix, solicitacaoPagador = 'Primeira parcela - Pix Automatico') {
+export async function criarCobranca(pixUserId, txid, valor, chavePix, solicitacaoPagador = 'Primeira parcela - Pix Automatico', oauthToken) {
   const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
   }
 
-  const token = await getOAuthToken(pixUserId);
+  const token = await getOAuthToken(pixUserId, oauthToken);
   const baseUrl = user.base_url.replace(/\/+$/, '');
 
   try {
@@ -596,15 +633,16 @@ export async function criarCobranca(pixUserId, txid, valor, chavePix, solicitaca
 
 /**
  * Cria LOCREC
+ * @param {string} [oauthToken] - Token OAuth opcional (evita 429)
  */
-export async function criarLocrec(pixUserId) {
+export async function criarLocrec(pixUserId, oauthToken) {
   const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
   }
 
-  const token = await getOAuthToken(pixUserId);
+  const token = await getOAuthToken(pixUserId, oauthToken);
   const baseUrl = user.base_url.replace(/\/+$/, '');
 
   try {
@@ -655,15 +693,16 @@ export async function criarLocrec(pixUserId) {
 
 /**
  * Cria recorrência
+ * @param {string} [oauthToken] - Token OAuth opcional (evita 429)
  */
-export async function criarRecorrencia(pixUserId, dados) {
+export async function criarRecorrencia(pixUserId, dados, oauthToken) {
   const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
   }
 
-  const token = await getOAuthToken(pixUserId);
+  const token = await getOAuthToken(pixUserId, oauthToken);
   const baseUrl = user.base_url.replace(/\/+$/, '');
 
   const body = {
@@ -739,15 +778,16 @@ export async function criarRecorrencia(pixUserId, dados) {
 
 /**
  * Consulta recorrência
+ * @param {string} [oauthToken] - Token OAuth opcional (evita 429)
  */
-export async function consultarRecorrencia(pixUserId, idRec, txid) {
+export async function consultarRecorrencia(pixUserId, idRec, txid, oauthToken) {
   const user = getPixUserById(pixUserId);
   
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
   }
 
-  const token = await getOAuthToken(pixUserId);
+  const token = await getOAuthToken(pixUserId, oauthToken);
   const baseUrl = user.base_url.replace(/\/+$/, '');
 
   try {
@@ -767,6 +807,27 @@ export async function consultarRecorrencia(pixUserId, idRec, txid) {
   } catch (error) {
     if (error.response?.status === 404) {
       return null;
+    }
+    const errorMsg = String(error.response?.data?.mensagem || error.response?.data?.message || error.message);
+    const errorCode = error.code || '';
+    if (/SSL|certificate|bad certificate|EPROTO|CERT/i.test(errorMsg) || /CERT|EPROTO/i.test(errorCode)) {
+      console.error('Erro SSL ao consultar recorrência. Tentando múltiplas configurações...');
+      try {
+        const ret = await tryWithMultipleSSLConfigs(async (agent) => {
+          const r = await axios.get(
+            `${baseUrl}/rec/${encodeURIComponent(idRec)}?txid=${encodeURIComponent(txid)}&gw-dev-app-key=${encodeURIComponent(user.gw_app_key)}`,
+            {
+              headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+              httpsAgent: agent,
+              timeout: 30000
+            }
+          );
+          return Array.isArray(r.data) ? r.data[0] : r.data;
+        });
+        return ret;
+      } catch (retryErr) {
+        console.error('Retry SSL falhou ao consultar recorrência:', retryErr.message);
+      }
     }
     console.error('Erro ao consultar recorrência:', error.response?.data || error.message);
     throw new Error(`Falha ao consultar recorrência: ${error.response?.data?.mensagem || error.message}`);
@@ -810,14 +871,15 @@ export function pickEmvFromResp(resp) {
 
 /**
  * Polling para obter QR Code
+ * @param {string} [oauthToken] - Token OAuth opcional (evita 429)
  */
-export async function pollingQrCode(pixUserId, idRec, txid, maxTentativas = 12) {
+export async function pollingQrCode(pixUserId, idRec, txid, oauthToken, maxTentativas = 12) {
   const delays = [1, 2, 3, 5, 5, 5, 8, 8, 8, 10, 10];
   let ultimaResposta = null;
 
   for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
     try {
-      const resp = await consultarRecorrencia(pixUserId, idRec, txid);
+      const resp = await consultarRecorrencia(pixUserId, idRec, txid, oauthToken);
       ultimaResposta = resp;
 
       if (!resp) {
@@ -881,12 +943,19 @@ function sleep(seconds) {
 
 /**
  * Processo completo Jornada 3
+ * Aceita dados.oauthToken opcional: quando enviado, não chama OAuth (evita 429).
  */
 export async function processarJornada3(pixUserId, dados) {
   // Usar dados do usuário se não fornecidos
   const user = getPixUserById(pixUserId);
   if (!user) {
     throw new Error('Usuário PIX não encontrado');
+  }
+
+  // Token OAuth opcional (frontend pode enviar quando servidor está com 429)
+  const oauthToken = dados.oauthToken && String(dados.oauthToken).trim() ? String(dados.oauthToken).trim() : undefined;
+  if (oauthToken) {
+    console.log('ℹ️  Usando token OAuth enviado na requisição (não chama oauth/token).');
   }
 
   const chavePix = dados.chavePixRecebedor || user.chave_pix_recebedor;
@@ -898,10 +967,10 @@ export async function processarJornada3(pixUserId, dados) {
   const txid = generateTxid();
 
   // 2. Criar cobrança imediata
-  await criarCobranca(pixUserId, txid, dados.valorPrimeiroPagamento, chavePix);
+  await criarCobranca(pixUserId, txid, dados.valorPrimeiroPagamento, chavePix, undefined, oauthToken);
 
   // 3. Criar LOCREC
-  const locrec = await criarLocrec(pixUserId);
+  const locrec = await criarLocrec(pixUserId, oauthToken);
   const locId = locrec.id;
 
   // 4. Criar recorrência
@@ -915,7 +984,7 @@ export async function processarJornada3(pixUserId, dados) {
     valorRec: dados.valorRec,
     locId: locId,
     txid: txid
-  });
+  }, oauthToken);
 
   const idRec = recorrencia.idRec;
 
@@ -937,7 +1006,7 @@ export async function processarJornada3(pixUserId, dados) {
 
   // 6. Polling para obter QR Code
   console.log(`Iniciando polling para obter QR Code (idRec: ${idRec}, txid: ${txid})...`);
-  const resultado = await pollingQrCode(pixUserId, idRec, txid);
+  const resultado = await pollingQrCode(pixUserId, idRec, txid, oauthToken);
   console.log('Polling concluído. QR Code obtido:', {
     hasDadosQR: !!resultado.dadosQR,
     hasPixCopiaECola: !!resultado.dadosQR?.pixCopiaECola,

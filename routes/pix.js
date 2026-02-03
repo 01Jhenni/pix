@@ -31,7 +31,15 @@ publicRouter.use((req, res, next) => {
  */
 router.post('/jornada3', async (req, res) => {
   try {
-    const { pixUserId, ...dados } = req.body;
+    const body = req.body || {};
+    const { pixUserId, oauthToken: bodyOauthToken, ...rest } = body;
+    const dados = { ...rest };
+    if (bodyOauthToken && String(bodyOauthToken).trim()) {
+      dados.oauthToken = String(bodyOauthToken).trim();
+      console.log('✅ Token OAuth recebido na requisição (não chamará oauth/token).');
+    } else {
+      console.log('⚠️  Nenhum oauthToken na requisição — o backend chamará oauth/token (pode dar 429).');
+    }
 
     if (!pixUserId) {
       return res.status(400).json({ 
@@ -137,8 +145,18 @@ router.post('/jornada3', async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao processar Jornada 3:', error);
+    const msg = error.message || 'Erro ao processar Jornada 3';
+    const isSSL = /certificado|SSL|cert\.pem|key\.pem|bad certificate/i.test(msg);
+    const is429 = /429|Too Many Requests|rate limit/i.test(msg);
+    const isToken = /token|OAuth|401|403/i.test(msg);
+    const code = isSSL ? 'SSL_CERTIFICATE_REQUIRED' : is429 || isToken ? 'OAUTH_ERROR' : 'JORNADA3_ERROR';
+    let errorMsg = msg;
+    if (is429 || (isToken && /429|HTML/i.test(msg))) {
+      errorMsg = msg + ' Use o campo "Token OAuth BB (opcional)" nesta tela e cole um token obtido com npm run test:oauth (em outro ambiente) ou do n8n.';
+    }
     res.status(500).json({ 
-      error: error.message || 'Erro ao processar Jornada 3' 
+      error: errorMsg,
+      code
     });
   }
 });
@@ -184,7 +202,7 @@ router.get('/recorrencia/:idRec', async (req, res) => {
 
 /**
  * GET /api/pix/qrcode/:txid
- * Obtém QR Code de uma transação
+ * Obtém QR Code de uma transação (formato compatível com n8n)
  */
 router.get('/qrcode/:txid', async (req, res) => {
   try {
@@ -211,6 +229,7 @@ router.get('/qrcode/:txid', async (req, res) => {
       margin: 2,
       errorCorrectionLevel: 'M'
     });
+    const qrcodeBase64 = qrCodeImage.replace(/^data:image\/\w+;base64,/, '');
 
     res.json({
       success: true,
@@ -219,6 +238,8 @@ router.get('/qrcode/:txid', async (req, res) => {
         idRec: transaction.id_rec,
         pixCopiaECola: transaction.pix_copia_e_cola,
         qrCodeImage: qrCodeImage,
+        qrcode: qrcodeBase64,
+        dadosQR: { jornada: transaction.jornada || 'JORNADA_3', pixCopiaECola: transaction.pix_copia_e_cola },
         status: transaction.status,
         jornada: transaction.jornada || 'JORNADA_3',
         devedor: {
@@ -306,8 +327,11 @@ publicRouter.post('/jornada3', async (req, res) => {
 
     // Buscar transação completa do banco para retornar dados completos
     const transaction = getTransactionByTxid(resultado._metadata?.txid);
-    
-    // Retornar resposta completa com QR Code e copia e cola (formato compatível com n8n)
+
+    // Base64 puro do PNG (sem prefixo data URL) para compatibilidade com n8n / Resposta Sucesso
+    const qrcodeBase64 = qrCodeImage && qrCodeImage.startsWith('data:') ? qrCodeImage.replace(/^data:image\/\w+;base64,/, '') : qrCodeImage;
+
+    // Retornar resposta completa com QR Code e copia e cola (formato idêntico ao n8n Jornada 3)
     res.json({
       success: true,
       message: 'Recorrência PIX criada com sucesso. QR Code gerado.',
@@ -315,46 +339,54 @@ publicRouter.post('/jornada3', async (req, res) => {
         // IDs principais
         txid: resultado._metadata?.txid,
         idRec: resultado._metadata?.idRec,
-        
-        // QR Code e Copia e Cola (sempre presentes)
-        pixCopiaECola: pixCopiaECola, // Código PIX para copiar e colar
-        qrCodeImage: qrCodeImage,     // QR Code em Base64 (data:image/png;base64,...)
-        qrCode: pixCopiaECola,        // Alias para compatibilidade
-        
-        // Informações da jornada
+
+        // QR Code e Copia e Cola
+        pixCopiaECola: pixCopiaECola,
+        qrCodeImage: qrCodeImage,
+        qrCode: pixCopiaECola,
+        qrcode: qrcodeBase64 || qrCodeImage, // n8n: PNG em base64 puro
+
+        // Formato n8n Resposta Sucesso
+        dadosQR: {
+          jornada: resultado.dadosQR?.jornada || 'JORNADA_3',
+          pixCopiaECola: pixCopiaECola
+        },
+        vinculo: {
+          devedor: {
+            cpf: dados.cpfDevedor,
+            nome: dados.nomeDevedor
+          }
+        },
+
         jornada: resultado.dadosQR?.jornada || 'JORNADA_3',
         status: resultado.status || 'ATIVA',
-        
-        // Dados do devedor
         devedor: {
           cpf: dados.cpfDevedor,
           nome: dados.nomeDevedor
         },
-        
-        // Valores
-        // Valores
         valor: {
           primeiroPagamento: parseFloat(dados.valorPrimeiroPagamento),
           recorrencia: parseFloat(dados.valorRec),
           primeiroPagamentoFormatado: `R$ ${parseFloat(dados.valorPrimeiroPagamento).toFixed(2).replace('.', ',')}`,
           recorrenciaFormatado: `R$ ${parseFloat(dados.valorRec).toFixed(2).replace('.', ',')}`
         },
-        
-        // Dados adicionais
         periodicidade: dados.periodicidade,
         dataInicial: dados.dataInicial,
         contrato: dados.contrato,
         createdAt: transaction?.created_at || new Date().toISOString(),
-        
-        // Metadata completa
         metadata: resultado._metadata
       }
     });
   } catch (error) {
     console.error('Erro ao criar recorrência:', error);
+    const msg = error.message || 'Erro ao criar recorrência PIX';
+    const isSSLError = /SSL|certificado|certificate|bad certificate|cert\.pem|key\.pem/i.test(msg);
     res.status(500).json({
       success: false,
-      error: error.message || 'Erro ao criar recorrência PIX'
+      error: isSSLError
+        ? 'A API do Banco do Brasil exige certificados SSL do cliente para gerar QR Code e PIX Copia e Cola. Coloque os arquivos cert.pem e key.pem (fornecidos pelo BB) na pasta certificates/ no servidor.'
+        : msg,
+      errorCode: isSSLError ? 'SSL_CERTIFICATE_REQUIRED' : undefined
     });
   }
 });

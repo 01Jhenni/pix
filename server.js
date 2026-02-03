@@ -1,21 +1,22 @@
 import './init-ssl.js';
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+// Carregar .env do diretório do app (não depende do cwd do PM2)
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import pixRoutes from './routes/pix.js';
 import userRoutes from './routes/users.js';
 import transactionRoutes from './routes/transactions.js';
 import authRoutes from './routes/auth.js';
 import { loadDatabase, initDatabase } from './database/db-loader.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -124,7 +125,13 @@ app.listen(PORT, HOST, () => {
   console.log(`📱 Frontend disponível em http://${HOST}:${PORT}`);
   console.log(`🔌 API disponível em http://${HOST}:${PORT}/api`);
   console.log(`💚 Health check: http://${HOST}:${PORT}/health`);
-  
+  // Diagnóstico BB_OAUTH_TOKEN (evita 429 no OAuth)
+  const token = process.env.BB_OAUTH_TOKEN;
+  if (token && token.trim()) {
+    console.log('✅ BB_OAUTH_TOKEN definido (OAuth não será chamado; uso do token manual).');
+  } else {
+    console.log('⚠️  BB_OAUTH_TOKEN não definido — o app chamará oauth/token (pode dar 429). Defina no .env ou no PM2.');
+  }
   // Mostrar também URLs externas se HOST for 0.0.0.0
   if (HOST === '0.0.0.0') {
     const externalUrl = process.env.EXTERNAL_URL || `http://localhost:${PORT}`;

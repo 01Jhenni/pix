@@ -13,6 +13,7 @@ package-lock.json
 
 # Certificados SSL (NUNCA commitar!)
 certificates/*.pem
+key.pem
 certificates/*.txt
 certificates/*.key
 certificates/*.crt
@@ -59,6 +60,8 @@ temp/
 
 # PM2
 .pm2/
+ecosystem.config.js
+ecosystem.config.cjs
 ecosystem.config.js.bak
 
 # Coverage

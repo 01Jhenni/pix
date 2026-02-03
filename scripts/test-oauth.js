@@ -121,12 +121,15 @@ async function testOAuth(pixUserId = null) {
       );
 
       if (response.data && response.data.access_token) {
+        const token = response.data.access_token;
         console.log('✅ SUCESSO! Token OAuth obtido com sucesso!');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`Token: ${response.data.access_token.substring(0, 30)}...`);
+        console.log(`Token (início): ${token.substring(0, 30)}...`);
         console.log(`Tipo: ${response.data.token_type || 'Bearer'}`);
         console.log(`Expira em: ${response.data.expires_in || 'N/A'} segundos`);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('\n💡 Para usar quando der 429, defina no servidor:');
+        console.log(`   BB_OAUTH_TOKEN=${token}`);
         console.log('\n✅ Configurações estão corretas!');
       } else {
         console.error('❌ Resposta inesperada:', response.data);
@@ -149,6 +152,19 @@ async function testOAuth(pixUserId = null) {
         } else if (error.response.status === 404) {
           console.error('\n💡 Problema: URL não encontrada');
           console.error('   Verifique se a OAuth URL está correta');
+        } else if (error.response.status === 400) {
+          const data = error.response.data || {};
+          const desc = (data.error_description || data.error || '').toLowerCase();
+          if (desc.includes('software não cadastrado') || desc.includes('não cadastrado') || data.error === 'invalid_client') {
+            console.error('\n💡 Problema: Software não cadastrado (invalid_client)');
+            console.error('   1. Certificados SSL do cliente: o BB homologação identifica o "software" pelo certificado.');
+            console.error('      Coloque cert.pem e key.pem (fornecidos pelo BB) em: certificates/');
+            console.error('   2. No portal do BB, confirme que a aplicação está cadastrada e ativa para homologação.');
+            console.error('   Veja RESOLVER_PERMISSOES_BB.md → "Software não cadastrado"');
+          } else {
+            console.error('\n💡 Problema: Requisição inválida (400)');
+            console.error('   Verifique o payload e os scopes solicitados.');
+          }
         }
       } else if (error.code) {
         console.error(`Código: ${error.code}`);

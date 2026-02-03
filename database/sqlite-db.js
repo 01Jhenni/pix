@@ -248,6 +248,14 @@ export function updatePixUser(id, updates) {
     fields.push('cidade_recebedor = ?');
     values.push(updates.cidade_recebedor);
   }
+  if (updates.oauth_url !== undefined) {
+    fields.push('oauth_url = ?');
+    values.push(updates.oauth_url);
+  }
+  if (updates.base_url !== undefined) {
+    fields.push('base_url = ?');
+    values.push(updates.base_url);
+  }
 
   fields.push('updated_at = ?');
   values.push(now);

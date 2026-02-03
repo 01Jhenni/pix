@@ -1251,9 +1251,23 @@
                         <label class="form-label">Basic Auth (Base64) * <span style="color: var(--muted); font-size: 11px;">(clientId:secret em base64)</span></label>
                         <input class="form-input" name="basic_auth_base64" placeholder="Base64 de clientId:secret" required />
                         <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
-                          💡 Use: <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;">echo -n "clientId:secret" | base64</code>
+                          💡 Use: <code style="background: rgba(15, 23, 42, 0.8); padding: 2px 4px; border-radius: 3px;">echo -n "clientId:secret" | base64</code> ou o campo <strong>basic</strong> do portal BB
                         </div>
                       </div>
+                    </div>
+
+                    <div class="form-row">
+                      <div class="form-group">
+                        <label class="form-label">OAuth URL * <span style="color: var(--muted); font-size: 11px;">(Ambiente: homologação ou produção)</span></label>
+                        <input class="form-input" name="oauth_url" id="pixUserOauthUrl" placeholder="https://oauth.hm.bb.com.br/oauth/token" value="https://oauth.hm.bb.com.br/oauth/token" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label">Base URL API * <span style="color: var(--muted); font-size: 11px;">(URL base da API Pix BB)</span></label>
+                        <input class="form-input" name="base_url" id="pixUserBaseUrl" placeholder="https://api.hm.bb.com.br/pix/v2" value="https://api.hm.bb.com.br/pix/v2" />
+                      </div>
+                    </div>
+                    <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px;">
+                      💡 Valores acima são de <strong>homologação</strong>. Para produção use: OAuth <code>https://oauth.bb.com.br/oauth/token</code> e Base <code>https://api-pix.bb.com.br/pix/v2</code>
                     </div>
 
                     <div class="form-row">
@@ -1761,6 +1775,13 @@
             <!-- TEST SECTION -->
             <section id="testSection" class="section">
               <div class="card">
+                <!-- AVISO 429 + CAMPO TOKEN: sempre visível no topo -->
+                <div id="tokenOauthBox" style="display: block !important; visibility: visible !important; margin-bottom: 16px; padding: 14px 16px; background: linear-gradient(135deg, rgba(234,179,8,0.15) 0%, rgba(234,88,12,0.08) 100%); border: 2px solid rgba(234,179,8,0.5); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                  <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #eab308;">⚠️ Erro 429? Cole o Token OAuth aqui</div>
+                  <p style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Se aparecer &quot;Falha ao obter token OAuth (HTTP 429)&quot;, obtenha um token com <code style="background: rgba(0,0,0,0.2); padding: 2px 6px;">npm run test:oauth</code> no PC ou do n8n e cole abaixo.</p>
+                  <input type="text" id="testOauthToken" name="oauthToken" class="form-input" placeholder="Cole o token OAuth do BB aqui (opcional)" autocomplete="off" style="width: 100%; max-width: 100%; box-sizing: border-box;" />
+                </div>
+
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                   <div>
                     <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">
@@ -1773,6 +1794,7 @@
                 </div>
 
                 <form id="testPixForm" class="login-form" style="margin-top: 12px;">
+
                   <div class="form-row">
                     <div class="form-group">
                       <label class="form-label">Usuário PIX *</label>
@@ -1892,7 +1914,7 @@
             <div class="login-title-group">
               <div class="login-title">Entrar no Painel PIX</div>
               <div class="login-subtitle">
-                Use o usuário admin configurado no Supabase. Padrão: <strong>admin / admin123</strong>
+                Primeiro acesso (criado automaticamente no servidor): <strong>admin</strong> / <strong>CeciM@042425</strong>
               </div>
             </div>
             <div class="login-badge">Admin PIX</div>
@@ -1905,13 +1927,18 @@
             </div>
             <div class="form-group">
               <label class="form-label">Senha</label>
-              <input class="form-input" name="password" type="password" placeholder="admin123" required />
+              <input class="form-input" name="password" type="password" placeholder="CeciM@042425" required />
             </div>
             <div class="btn-row" style="justify-content: space-between; margin-top: 8px;">
               <span style="font-size: 11px; color: var(--muted);">
                 Dica: se não conseguir logar, execute <span class="code-soft">npm run create:admin</span>.
               </span>
               <button type="submit" class="btn btn-primary btn-small">Entrar</button>
+            </div>
+            <div style="margin-top: 12px; text-align: center;">
+              <button type="button" id="btnContinuarSemLogin" class="btn btn-ghost btn-small" style="font-size: 12px; color: var(--muted);">
+                Continuar sem login (apenas Teste PIX / Token OAuth)
+              </button>
             </div>
           </form>
 
@@ -2540,6 +2567,19 @@
         const testQrResult = document.getElementById('testQrResult');
         const testQrDetailsWrapper = document.getElementById('testQrDetailsWrapper');
 
+        // Garantir que o campo Token OAuth exista (fallback se o HTML em cache for antigo)
+        (function ensureTokenOauthBox() {
+          const section = document.getElementById('testSection');
+          if (!section || document.getElementById('testOauthToken')) return;
+          const card = section.querySelector('.card');
+          if (!card) return;
+          const box = document.createElement('div');
+          box.id = 'tokenOauthBox';
+          box.setAttribute('style', 'display: block !important; visibility: visible !important; margin-bottom: 16px; padding: 14px 16px; background: linear-gradient(135deg, rgba(234,179,8,0.15) 0%, rgba(234,88,12,0.08) 100%); border: 2px solid rgba(234,179,8,0.5); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);');
+          box.innerHTML = '<div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #eab308;">⚠️ Erro 429? Cole o Token OAuth aqui</div><p style="font-size: 12px; color: var(--muted); margin-bottom: 8px;">Se aparecer &quot;Falha ao obter token OAuth (HTTP 429)&quot;, obtenha um token com <code style="background: rgba(0,0,0,0.2); padding: 2px 6px;">npm run test:oauth</code> no PC ou do n8n e cole abaixo.</p><input type="text" id="testOauthToken" name="oauthToken" class="form-input" placeholder="Cole o token OAuth do BB aqui (opcional)" autocomplete="off" style="width: 100%; max-width: 100%; box-sizing: border-box;" />';
+          card.insertBefore(box, card.firstChild);
+        })();
+
         async function loadPixUsersForTest() {
           try {
             const res = await apiFetch('/users');
@@ -2579,6 +2619,12 @@
           const convenio = document.getElementById('testConvenio').value;
           if (convenio) {
             payload.convenio = convenio;
+          }
+
+          const oauthTokenEl = document.getElementById('testOauthToken');
+          const oauthToken = oauthTokenEl ? String(oauthTokenEl.value || '').trim() : '';
+          if (oauthToken) {
+            payload.oauthToken = oauthToken;
           }
 
           try {
@@ -2645,8 +2691,38 @@
 
             showToast('QR Code gerado com sucesso!', 'success');
           } catch (err) {
-            showToast(err.message || 'Erro ao gerar QR Code', 'error');
-            testQrResult.classList.add('hidden');
+            const msg = err.message || 'Erro ao gerar QR Code';
+            const isSSLError = /certificado|cert\.pem|key\.pem|SSL do cliente/i.test(msg);
+            showToast(msg.substring(0, 160) + (msg.length > 160 ? '...' : ''), 'error');
+            testQrResult.classList.remove('hidden');
+            const isOAuth429 = /429|OAuth|token|Too Many Requests/i.test(msg);
+            if (isOAuth429) {
+              testQrDetailsWrapper.innerHTML =
+                '<div class="card" style="max-width:520px; border-color: var(--warn);">' +
+                '<div style="font-weight:600; margin-bottom:8px;">⚠️ Erro 429 — use Token OAuth manual</div>' +
+                '<p style="font-size:13px; color: var(--muted); margin-bottom:12px;">O servidor está bloqueado pelo limite do Banco do Brasil. <strong>Role até o topo desta tela</strong> e localize o bloco amarelo <strong>&quot;Erro 429? Cole o Token OAuth aqui&quot;</strong>. Cole o token no campo de texto e clique em <strong>Gerar QR Code PIX</strong> de novo.</p>' +
+                '<p style="font-size:12px; color: var(--muted); margin-bottom:6px;"><strong>Onde obter o token:</strong></p>' +
+                '<ul style="font-size:12px; color: var(--muted); margin:0 0 8px 1.2em;">' +
+                '<li>No seu PC: <code style="background: rgba(0,0,0,0.2); padding:2px 6px;">npm run test:oauth</code> e copie o <code>access_token</code> da saída.</li>' +
+                '<li>Ou copie do workflow n8n que obtém o token do BB.</li>' +
+                '</ul>' +
+                '<p style="font-size:11px; color: var(--muted);">Se o campo não aparecer no topo, atualize a página (Ctrl+F5) ou faça deploy do frontend. Na tela de login use &quot;Continuar sem login&quot; para acessar esta tela.</p>' +
+                '</div>';
+            } else if (isSSLError) {
+              testQrDetailsWrapper.innerHTML =
+                '<div class="card" style="max-width:520px; border-color: var(--danger);">' +
+                '<div style="font-weight:600; margin-bottom:8px;">⚠️ Certificados SSL necessários</div>' +
+                '<p style="font-size:13px; color: var(--muted); margin-bottom:12px;">Para gerar QR Code e PIX Copia e Cola, a API do Banco do Brasil exige certificados do cliente (cert.pem e key.pem).</p>' +
+                '<p style="font-size:12px; color: var(--muted); margin-bottom:6px;"><strong>No servidor:</strong></p>' +
+                '<ul style="font-size:12px; color: var(--muted); margin:0 0 8px 1.2em;">' +
+                '<li>Coloque <code style="background: rgba(0,0,0,0.2); padding:2px 6px;">cert.pem</code> e <code style="background: rgba(0,0,0,0.2); padding:2px 6px;">key.pem</code> na pasta <code style="background: rgba(0,0,0,0.2); padding:2px 6px;">certificates/</code> (mesma credencial "Vida Ouro" do n8n), <strong>ou</strong></li>' +
+                '<li>Defina as variáveis <code style="background: rgba(0,0,0,0.2); padding:2px 6px;">SSL_CERT</code> e <code style="background: rgba(0,0,0,0.2); padding:2px 6px;">SSL_KEY</code> com o conteúdo dos arquivos.</li>' +
+                '</ul>' +
+                '<p style="font-size:11px; color: var(--muted);">Depois reinicie o servidor e tente de novo. Veja <strong>RESOLVER_PERMISSOES_BB.md</strong>.</p>' +
+                '</div>';
+            } else {
+              testQrDetailsWrapper.innerHTML = '<div class="card" style="max-width:520px; border-color: var(--danger);"><p style="font-size:13px;">' + msg.replace(/</g, '&lt;').substring(0, 400) + '</p></div>';
+            }
           }
         });
 
@@ -2663,7 +2739,7 @@
               return res.data;
             }
           } catch (error) {
-            // Token inválido ou expirado
+            // Token inválido ou expirado: limpar e deixar tela de login visível (ou use "Continuar sem login")
             setToken('');
             return false;
           }
@@ -2788,6 +2864,28 @@
         if (loginOverlay) {
           loginOverlay.classList.remove('hidden');
           loginOverlay.style.display = 'flex';
+        }
+
+        // Continuar sem login: mostra o app para usar Teste PIX / Token OAuth
+        const btnContinuarSemLogin = document.getElementById('btnContinuarSemLogin');
+        if (btnContinuarSemLogin) {
+          btnContinuarSemLogin.addEventListener('click', () => {
+            if (loginOverlay) {
+              loginOverlay.classList.add('hidden');
+              loginOverlay.style.display = 'none';
+            }
+            if (appRoot) {
+              appRoot.style.opacity = '1';
+              appRoot.style.pointerEvents = 'auto';
+            }
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+              sidebar.style.pointerEvents = 'auto';
+              sidebar.style.zIndex = '100';
+            }
+            showToast('Use o menu "Teste PIX" para gerar QR Code. Cole o Token OAuth se estiver dando erro 429.', 'info');
+            loadPixUsersForTest();
+          });
         }
 
         // Verificar se já está logado ao carregar
