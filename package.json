@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "syntax-check": "node --check server.js",
+    "check-syntax": "node scripts/check-syntax.js",
     "dev": "node --watch server.js",
     "create:admin": "node scripts/create-admin.js",
     "test:oauth": "node scripts/test-oauth.js",

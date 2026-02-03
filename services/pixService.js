@@ -551,7 +551,6 @@ export async function getOAuthToken(pixUserId, overrideToken) {
     }
     
     throw new Error(finalErrorMsg);
-  }
 }
 
 /**

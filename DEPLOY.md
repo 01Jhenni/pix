@@ -2,10 +2,13 @@
 
 ## No PC (enviar pro GitHub)
 
+**Importante:** use a pasta onde está o `package.json` e o `services/pixService.js`.
+
 ```powershell
 cd C:\Users\Jhennifer\Desktop\pix\pix
+git status
 git add .
-git commit -m "PIX: ajustes rotas, SQLite, deploy"
+git commit -m "Fix: SyntaxError pixService.js (remove } extra), script check-syntax"
 git push origin main
 ```
 
@@ -20,11 +23,13 @@ cd /root/pix
 git fetch origin main
 git reset --hard origin/main
 npm install
+node --check server.js
 pm2 restart pix-system --update-env
 pm2 logs pix-system --lines 20
 ```
 
-(Se a branch for `master`: use `origin master` no `git fetch`.)
+(Se a branch for `master`: use `origin master` no `git fetch`.)  
+Se der **SyntaxError**, rode `node scripts/check-syntax.js` no servidor para ver arquivo e linha; em geral o servidor não recebeu a correção — faça push do PC (seção "No PC").
 
 ---
 
@@ -42,4 +47,4 @@ No `.env` (pasta `/root/pix`):
 - Abra `https://pix.masterclassic.com.br/api/version` — deve retornar JSON com `version`, `build`, `bbOAuthTokenLoaded`.
 - Se retornar 404 ou 502: servidor com código antigo ou app caiu; rode de novo o bloco "No servidor" acima.
 
-**Se o log mostrar "SyntaxError: Unexpected token '}'":** no servidor rode `node --check server.js` (na pasta `/root/pix`). Se falhar, a mensagem indica o arquivo com erro. Corrija ou atualize o código com `git fetch origin main` e `git reset --hard origin/main`.
+**Se o log mostrar "SyntaxError: Unexpected token '}'":** o servidor não tem a correção do `pixService.js`. No PC: `git add .` → `git commit -m "Fix: SyntaxError pixService.js (remove } extra)"` → `git push origin main`. Depois no servidor: `cd /root/pix && git fetch origin main && git reset --hard origin/main && node --check server.js && pm2 restart pix-system --update-env`.
