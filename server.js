@@ -6,14 +6,12 @@ import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-// Carregar .env do diretório do app (não depende do cwd do PM2)
 const envPath = path.join(__dirname, '.env');
 dotenv.config({ path: envPath });
-// Log imediato: se BB_OAUTH_TOKEN não aparecer aqui após restart, o .env não tem a variável ou está em outro path
 if (process.env.BB_OAUTH_TOKEN && process.env.BB_OAUTH_TOKEN.trim()) {
-  console.log('✅ [startup] BB_OAUTH_TOKEN carregado do .env — OAuth não será chamado (evita 429).');
+  console.log('✅ [startup] BB_OAUTH_TOKEN carregado — OAuth não será chamado.');
 } else {
-  console.log('⚠️  [startup] BB_OAUTH_TOKEN não está no .env — adicione e reinicie para evitar 429. Arquivo .env:', envPath);
+  console.log('⚠️  [startup] BB_OAUTH_TOKEN não definido no .env — adicione para evitar 429.');
 }
 
 import express from 'express';
@@ -81,7 +79,6 @@ import profileRoutes from './routes/profiles.js';
 import apiKeyRoutes from './routes/api-keys.js';
 import { publicRouter as pixPublicRoutes } from './routes/pix.js';
 
-// Rota de versão primeiro (se retornar 404 no servidor = código antigo, faça git pull + pm2 restart)
 const BUILD_ID = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 app.get('/api/version', (req, res) => {
   res.json({
@@ -104,7 +101,6 @@ app.use('/api/v1/pix', pixPublicRoutes);
 const publicPath = path.join(__dirname, 'public');
 const publicIndexPath = path.join(__dirname, 'public', 'index.html');
 
-// Health e versão antes do catch-all (senão nunca são alcançados)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -147,14 +143,12 @@ app.listen(PORT, HOST, () => {
   console.log(`📱 Frontend disponível em http://${HOST}:${PORT}`);
   console.log(`🔌 API disponível em http://${HOST}:${PORT}/api`);
   console.log(`💚 Health check: http://${HOST}:${PORT}/health`);
-  // Diagnóstico BB_OAUTH_TOKEN (evita 429 no OAuth)
   const token = process.env.BB_OAUTH_TOKEN;
   if (token && token.trim()) {
-    console.log('✅ BB_OAUTH_TOKEN definido (OAuth não será chamado; uso do token manual).');
+    console.log('✅ BB_OAUTH_TOKEN definido.');
   } else {
-    console.log('⚠️  BB_OAUTH_TOKEN não definido — o app chamará oauth/token (pode dar 429). Defina no .env ou no PM2.');
+    console.log('⚠️  BB_OAUTH_TOKEN não definido — OAuth será chamado (pode dar 429).');
   }
-  // Mostrar também URLs externas se HOST for 0.0.0.0
   if (HOST === '0.0.0.0') {
     const externalUrl = process.env.EXTERNAL_URL || `http://localhost:${PORT}`;
     console.log(`🌐 Acesse externamente: ${externalUrl}`);

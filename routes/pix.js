@@ -6,29 +6,16 @@ import { authenticateApiKey } from './api-keys.js';
 
 const router = express.Router();
 
-/**
- * Rotas públicas (com API key) - para integração externa
- */
 const publicRouter = express.Router();
 
-// Middleware para rotas públicas - aceita API key ou pixUserId
 publicRouter.use((req, res, next) => {
-  // Se tem API key, autenticar
   const apiKey = req.headers['x-api-key'];
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   const hasApiKey = apiKey || (authHeader && (authHeader.includes('Bearer') || authHeader.startsWith('Bearer')));
-  
-  if (hasApiKey) {
-    return authenticateApiKey(req, res, next);
-  }
-  // Se não tem API key mas tem pixUserId no body, permitir
+  if (hasApiKey) return authenticateApiKey(req, res, next);
   next();
 });
 
-/**
- * POST /api/pix/jornada3
- * Cria uma recorrência PIX Jornada 3
- */
 router.post('/jornada3', async (req, res) => {
   try {
     const body = req.body || {};
@@ -59,7 +46,6 @@ router.post('/jornada3', async (req, res) => {
       }
     }
 
-    // Processar Jornada 3
     console.log('Iniciando processamento Jornada 3...');
     const resultado = await processarJornada3(pixUserId, dados);
     console.log('Processamento concluído. Resultado:', {
@@ -88,7 +74,6 @@ router.post('/jornada3', async (req, res) => {
       console.warn('⚠️  Código PIX copia e cola não encontrado no resultado');
     }
 
-    // Verificar se temos os dados necessários
     if (!pixCopiaECola) {
       return res.status(500).json({
         error: 'QR Code não foi gerado. Verifique se a recorrência foi criada corretamente.',
@@ -100,43 +85,26 @@ router.post('/jornada3', async (req, res) => {
       });
     }
 
-    // Retornar resposta completa com QR Code e copia e cola
     res.json({
       success: true,
       data: {
-        // IDs principais
         txid: resultado._metadata?.txid,
         idRec: resultado._metadata?.idRec,
-        
-        // QR Code e Copia e Cola (sempre presentes)
-        pixCopiaECola: pixCopiaECola, // Código PIX para copiar e colar
-        qrCodeImage: qrCodeImage,     // QR Code em Base64 (data:image/png;base64,...)
-        qrCode: pixCopiaECola,        // Alias para compatibilidade
-        
-        // Informações da jornada
+        pixCopiaECola: pixCopiaECola,
+        qrCodeImage: qrCodeImage,
+        qrCode: pixCopiaECola,
         jornada: resultado.dadosQR?.jornada || 'JORNADA_3',
         status: resultado.status || 'ATIVA',
-        
-        // Dados do devedor
-        devedor: {
-          cpf: dados.cpfDevedor,
-          nome: dados.nomeDevedor
-        },
-        
-        // Valores
+        devedor: { cpf: dados.cpfDevedor, nome: dados.nomeDevedor },
         valor: {
           primeiroPagamento: dados.valorPrimeiroPagamento,
           recorrencia: dados.valorRec,
           primeiroPagamentoFormatado: `R$ ${parseFloat(dados.valorPrimeiroPagamento).toFixed(2).replace('.', ',')}`,
           recorrenciaFormatado: `R$ ${parseFloat(dados.valorRec).toFixed(2).replace('.', ',')}`
         },
-        
-        // Dados adicionais
         periodicidade: dados.periodicidade,
         dataInicial: dados.dataInicial,
         contrato: dados.contrato,
-        
-        // Metadata completa
         metadata: resultado._metadata
       }
     });
